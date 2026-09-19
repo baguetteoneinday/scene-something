@@ -13,7 +13,7 @@ export const analysisSchema = z.object({
 }).strict();
 export const questionsSchema = z.object({questions: z.array(z.object({id,question: text,reason:text}).strict()).max(5)}).strict();
 export const storySchema = z.object({title: z.string().min(1).max(150),subtitle:text.nullable(),coverPhotoId:id,
-  sections:z.array(z.object({heading:text.nullable(),paragraphs:z.array(z.string().min(1).max(6000)).min(1).max(8),relatedPhotoIds:z.array(id).max(20)}).strict()).min(1).max(8),
+  sections:z.array(z.object({heading:text.nullable(),paragraphs:z.array(z.string().min(1).max(6000)).min(1).max(8),relatedPhotoIds:z.array(id).max(20)}).strict()).min(1).max(20),
 }).strict();
 export const letterDetailsSchema = z.object({recipient:z.string().max(100),message:z.string().max(2000),sender:z.string().max(100),speechStyle:z.enum(['casual','polite'])}).strict();
-export const storyRequestSchema = analysisSchema.extend({letterDetails:letterDetailsSchema.optional(),contextAnswers:z.array(z.object({questionId:id,question:text,answer:z.string().max(2000)}).strict()).max(5),storyType:z.enum(['diary','essay','travel','letter','fiction']),writingTone:z.enum(['plain','emotional','witty','cinematic','literary'])}).strict();
+export const storyRequestSchema = analysisSchema.extend({creativity:z.union([z.literal(0),z.literal(25),z.literal(50),z.literal(75),z.literal(100)]).optional(),letterDetails:letterDetailsSchema.optional(),contextAnswers:z.array(z.object({questionId:id,question:text,answer:z.string().max(2000)}).strict()).max(5),storyType:z.enum(['diary','essay','travel','letter','fiction']),writingTone:z.enum(['plain','emotional','witty','cinematic','literary'])}).strict();

@@ -4,7 +4,7 @@ import { analysisSchema, questionsSchema, storySchema, storyRequestSchema } from
 import { demoPhotoAnalysis, demoTimeline, demoQuestions, demoPhotos, makeDemoStory } from '../lib/demo/demoData';
 import { orderPhotos } from '../lib/images/compress';
 import { storyTypes, tones } from '../types/story';
-test('all 25 demo format/tone combinations produce valid stories with real image references',()=>{
+test('all available demo format/tone combinations produce valid stories with real image references',()=>{
  const ids=new Set(demoPhotos.map(p=>p.id));
  for(const t of storyTypes)for(const tone of tones){const story=storySchema.parse(makeDemoStory(t.id,tone.id,[]));assert.ok(ids.has(story.coverPhotoId));assert.ok(story.sections.every(s=>s.relatedPhotoIds.every(id=>ids.has(id))));assert.ok(story.sections.every(s=>s.paragraphs.join('').length>0));}
 });
@@ -45,4 +45,25 @@ test('letter honors recipient, intended message and signature without leaking in
  assert.equal(makeDemoStory('letter','plain',[]).title,'그날의 나에게');
  const input={photoAnalysis:demoPhotoAnalysis,timeline:demoTimeline,contextAnswers:[],storyType:'letter',writingTone:'plain',letterDetails:details};
  assert.ok(storyRequestSchema.safeParse(input).success);assert.ok(!storyRequestSchema.safeParse({...input,letterDetails:{...details,recipient:'x'.repeat(101)}}).success);
+});
+
+test('chapter boundaries enforce hour gaps, retain order and cover every photo once',async()=>{
+ const {planChapters}=await import('../lib/story/chapters');
+ const photos=Array.from({length:7},(_,i)=>({...demoPhotoAnalysis[0],id:`p${i}`,order:i+1,capturedAt:['2026-09-01T00:00:00Z','2026-09-01T00:59:59Z','2026-09-01T01:59:59Z',null,'2026-09-01T03:00:00Z','invalid','2026-09-01T02:00:00Z'][i]}));
+ const analysis={photoAnalysis:photos,timeline:{...demoTimeline,chapters:[{...demoTimeline.chapters[0],photoIds:photos.map(p=>p.id)}]}};
+ const chapters=planChapters(analysis);
+ assert.deepEqual(chapters.flatMap(c=>c.photoIds),photos.map(p=>p.id));
+ assert.ok(chapters.some(c=>c.photoIds.join(',')==='p0,p1'));
+ assert.ok(chapters.findIndex(c=>c.photoIds.includes('p1'))!==chapters.findIndex(c=>c.photoIds.includes('p2')));
+ assert.ok(chapters.findIndex(c=>c.photoIds.includes('p3'))!==chapters.findIndex(c=>c.photoIds.includes('p4')));
+ assert.ok(chapters.findIndex(c=>c.photoIds.includes('p4'))!==chapters.findIndex(c=>c.photoIds.includes('p6')));
+});
+test('twenty hourly photos produce twenty chapters and creativity accepts only specified steps',async()=>{
+ const {planChapters}=await import('../lib/story/chapters');
+ const photos=Array.from({length:20},(_,i)=>({...demoPhotoAnalysis[0],id:`p${i}`,order:i+1,capturedAt:new Date(Date.UTC(2026,8,1,i)).toISOString()}));
+ assert.equal(planChapters({photoAnalysis:photos,timeline:demoTimeline}).length,20);
+ const base={photoAnalysis:demoPhotoAnalysis,timeline:demoTimeline,contextAnswers:[],storyType:'essay',writingTone:'plain'};
+ for(const creativity of [0,25,50,75,100])assert.ok(storyRequestSchema.safeParse({...base,creativity}).success);
+ assert.ok(!storyRequestSchema.safeParse({...base,creativity:30}).success);
+ assert.ok(!tones.some(t=>t.id==='witty'));
 });

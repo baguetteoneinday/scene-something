@@ -1,3 +1,4 @@
+import type { Creativity } from '@/lib/story/style';
 import { emptyLetterDetails } from '@/types/story';
 import type { Analysis, UploadedPhoto, MissingContextQuestion, GeneratedStory, StoryType, WritingTone, UserContextAnswer, LetterDetails } from '@/types/story';
 export const demoPhotos:UploadedPhoto[]=[{id:'demo_01',src:'/demo/photo-01.jpg',order:1,name:'바다의 여백'},{id:'demo_02',src:'/demo/photo-02.jpg',order:2,name:'해안을 따라'},{id:'demo_03',src:'/demo/photo-03.jpg',order:3,name:'커피 한 잔'}];
@@ -12,21 +13,27 @@ export const demoStoryVariants:Record<WritingTone,[string,string,string]>={
  cinematic:['넓은 화면. 옅은 하늘 아래 물결이 길게 놓여 있다. 젖은 모래 위에는 빛이 남는다.','화면은 밝은 절벽으로 이어진다. 자갈 해안의 한쪽에 걷는 사람이 작게 보인다.','가까운 장면. 나무 테이블, 흰 잔, 그 옆의 숟가락. 서로 다른 크기의 풍경이 세 컷 안에 놓인다.'],
  literary:['바다는 가느다란 선으로 하늘과 맞닿아 있다. 모래 위의 물기는 그 선 아래 놓인 빛을 받아 적는다.','흰 절벽과 자갈 사이에 사람의 모습이 있다. 풍경이 차지한 넓이와 사람이 차지한 넓이가 한 장 안에서 만난다.','둥근 잔의 테두리가 커피를 감싼다. 프레임이 풍경을 담듯, 작은 잔도 제 안의 것을 담고 있다.'],
 };
-export function makeDemoStory(type:StoryType,tone:WritingTone,answers:UserContextAnswer[],version=0,letter:LetterDetails=emptyLetterDetails):GeneratedStory {
+export function makeDemoStory(type:StoryType,tone:WritingTone,answers:UserContextAnswer[],version=0,letter:LetterDetails=emptyLetterDetails,creativity:Creativity=type==='fiction'?100:0):GeneratedStory {
  const memory=answers.filter(a=>a.answer.trim()).map(a=>a.answer.trim());
- if(type==='fiction')return {title:version%2?'파도가 맡긴 문장':'아직 보내지 않은 편지',subtitle:'바다에서 시작된 짧은 소설',coverPhotoId:'demo_02',sections:[{heading:'밀려온 것',paragraphs:[({plain:'윤은 이름이 지워진 편지를 들고 바다 앞에 섰다. 마지막 줄에는 아직 도착하지 않은 사람을 기다린다고 적혀 있었다.',emotional:'접힌 편지 한 장을 품고 윤은 바다에 왔다. 누군가를 오래 기다렸다는 마지막 문장이 자꾸 마음에 걸렸다.',witty:'윤은 바다에 답을 물으러 왔다. 바다는 대답 대신 신발을 적셨다.',cinematic:'먼 수평선. 화면 아래 윤의 손이 들어온다. 접힌 편지에는 이름이 없다. 마지막 줄만 남아 있다. 아직 도착하지 않은 사람을 기다린다고.',literary:'편지에서 이름이 사라진 자리는 작았다. 윤은 그 작은 빈칸을 들고 바다에 왔다. 기다림이라는 단어가 종이의 마지막을 붙잡고 있었다.'})[tone]],relatedPhotoIds:['demo_01']},{heading:'해안의 문장',paragraphs:['절벽 아래를 걷는 동안 윤은 그 문장을 여러 번 고쳐 읽었다. 기다리는 사람도, 기다려지는 사람도 자신일 수 있다는 생각이 들었다. 바람이 종이 한쪽을 접었다. 마치 다음 장으로 넘어가라는 표시 같았다.'],relatedPhotoIds:['demo_02']},{heading:'새로운 수신인',paragraphs:['카페에 앉아 커피를 주문한 윤은 편지를 뒤집었다. 빈 뒷면에 짧게 적었다. “늦어도 괜찮아. 도착하면 여기서 만나.” 그리고 수신인 칸에 자신의 이름을 썼다.'],relatedPhotoIds:['demo_03']}]};
+ const details=[
+ '하늘과 바다가 만나는 가느다란 경계를 따라 시선을 옮긴다. 화면 가까이에는 젖은 모래가 있고, 그 너머에는 물결이 놓여 있다. 하나의 사진 안에서도 가까운 자리와 먼 자리가 서로 다른 결을 보여 준다. 이 풍경의 이름과 그날의 사정은 사진만으로 알 수 없다. 그래서 보이는 것부터 천천히 읽어 본다.',
+ '절벽의 밝은 면과 발밑의 작은 자갈들이 서로 다른 크기로 담겨 있다. 사람의 모습은 그 사이에 놓여 있다. 사진을 오래 볼수록 큰 풍경만큼 작은 부분에도 시선이 간다. 누가 어디를 향해 걷는지 단정하는 대신, 이 장면에 함께 담긴 크기와 거리의 차이를 기록해 둔다.',
+ '잔의 둥근 선 곁에 숟가락의 길쭉한 선이 놓인다. 사진의 범위는 앞선 바다와 해안보다 가까운 물건에 머문다. 넓게 펼쳐진 풍경과 손 가까이 놓일 법한 작은 물건을 나란히 보게 된다. 세 장을 한꺼번에 설명하기보다 각 장면이 보여 주는 만큼 문장을 남긴다.'
+ ];
+ const imagined=creativity===25?['사진의 여백을 편지지의 빈칸에 빗대어 본다.','절벽과 작은 사람의 대비는 커다란 책에 놓인 작은 쉼표를 닮았다.','잔의 둥근 테두리를 이 기록의 마침표에 빗대어 본다.']:creativity>=50?['상상 속에서는 파도가 아직 쓰지 않은 편지의 첫 줄처럼 밀려온다.','이 장면에서 시작한 상상 속 인물은 길 끝에 작은 서점을 발견한다.','상상 속 이야기의 끝에서 누군가 빈 엽서에 다음 만남의 장소를 적는다.']:[];
+ if(type==='fiction'&&creativity>=75)return {title:version%2?'파도가 맡긴 문장':'아직 보내지 않은 편지',subtitle:'바다에서 시작된 짧은 소설',coverPhotoId:'demo_02',sections:[{heading:'밀려온 것',paragraphs:[({plain:'윤은 이름이 지워진 편지를 들고 바다 앞에 섰다. 마지막 줄에는 아직 도착하지 않은 사람을 기다린다고 적혀 있었다.',emotional:'접힌 편지 한 장을 품고 윤은 바다에 왔다. 누군가를 오래 기다렸다는 마지막 문장이 자꾸 마음에 걸렸다.',witty:'윤은 바다에 답을 물으러 왔다. 바다는 대답 대신 신발을 적셨다.',cinematic:'먼 수평선. 화면 아래 윤의 손이 들어온다. 접힌 편지에는 이름이 없다. 마지막 줄만 남아 있다. 아직 도착하지 않은 사람을 기다린다고.',literary:'편지에서 이름이 사라진 자리는 작았다. 윤은 그 작은 빈칸을 들고 바다에 왔다. 기다림이라는 단어가 종이의 마지막을 붙잡고 있었다.'})[tone]],relatedPhotoIds:['demo_01']},{heading:'해안의 문장',paragraphs:['절벽 아래를 걷는 동안 윤은 그 문장을 여러 번 고쳐 읽었다. 기다리는 사람도, 기다려지는 사람도 자신일 수 있다는 생각이 들었다. 바람이 종이 한쪽을 접었다. 마치 다음 장으로 넘어가라는 표시 같았다.'],relatedPhotoIds:['demo_02']},{heading:'새로운 수신인',paragraphs:['카페에 앉아 커피를 주문한 윤은 편지를 뒤집었다. 빈 뒷면에 짧게 적었다. “늦어도 괜찮아. 도착하면 여기서 만나.” 그리고 수신인 칸에 자신의 이름을 썼다.'],relatedPhotoIds:['demo_03']}]};
  if(type==='letter'){
   const recipient=letter.recipient.trim()||'그날의 나';const polite=letter.speechStyle==='polite';
   const opening=polite?'사진에 담긴 장면들을 편지로 건네요.':'사진에 담긴 장면들을 편지로 건네.';
-  const sections=demoStoryVariants[tone].map((scene,i)=>({heading:null,paragraphs:[...(i===0?[`${recipient}에게,`,opening]:[]),scene,...memory.filter((_,j)=>j%3===i)],relatedPhotoIds:[demoPhotos[i].id]}));
+  const sections=demoStoryVariants[tone].map((scene,i)=>({heading:null,paragraphs:[...(i===0?[`${recipient}에게,`,opening]:[]),scene,details[i],...(imagined[i]?[imagined[i]]:[]),...memory.filter((_,j)=>j%3===i)],relatedPhotoIds:[demoPhotos[i].id]}));
   sections.push({heading:null,paragraphs:[...(letter.message.trim()?[letter.message.trim()]:[]),polite?'이 사진들과 함께 편지를 전합니다.':'이 사진들과 함께 편지를 전해.',...(letter.sender.trim()?[`${letter.sender.trim()} ${polite?'드림':'씀'}`]:[])],relatedPhotoIds:[]});
   return {title:`${recipient}에게`,subtitle:'사진에 담아 건네는 편지',coverPhotoId:'demo_02',sections};
  }
- const titles:Record<StoryType,string>={diary:'사진으로 남겨 둔 하루',essay:'바다와 한 잔 사이',travel:'세 장면의 여행 기록',letter:'그날의 나에게',fiction:''};
- const headings:Record<StoryType,string[]>={diary:['사진을 펼치며','함께 남은 장면','기록의 끝'],essay:['바다의 여백','풍경 속의 사람','작은 장면 하나'],travel:['첫 번째 풍경','해안의 한 장면','커피가 있는 자리'],letter:['그날의 나에게','이 장면도 기억하니','사진을 덮기 전에'],fiction:[]};
+ const titles:Record<StoryType,string>={diary:'사진으로 남겨 둔 하루',essay:'바다와 한 잔 사이',travel:'세 장면의 여행 기록',letter:'그날의 나에게',fiction:'사진 속 세 장면'};
+ const headings:Record<StoryType,string[]>={diary:['사진을 펼치며','함께 남은 장면','기록의 끝'],essay:['바다의 여백','풍경 속의 사람','작은 장면 하나'],travel:['첫 번째 풍경','해안의 한 장면','커피가 있는 자리'],letter:['그날의 나에게','이 장면도 기억하니','사진을 덮기 전에'],fiction:['바다의 장면','해안의 장면','커피의 장면']};
  const paragraphs=[...demoStoryVariants[tone]];
  if(type==='diary')paragraphs[0]='오늘은 남겨 둔 사진을 펼쳐 보았다. '+paragraphs[0];
  if(type==='travel')paragraphs[0]='사진의 순서대로 풍경을 기록한다. '+paragraphs[0];
  if(type==='essay'&&version%2)paragraphs[2]+=' 사진이 남긴 것은 장면이고, 그 사이를 채우는 것은 지금 적는 문장이다.';
- return {title:titles[type],subtitle:version%2?'사진 사이에 남겨 둔 기록':'세 장의 사진, 하나의 이야기',coverPhotoId:'demo_02',sections:paragraphs.map((text,i)=>({heading:headings[type][i],paragraphs:[text,...memory.filter((_,j)=>j%3===i).map(value=>`사진 밖의 기억도 적어 둔다.\n${value}`)],relatedPhotoIds:[demoPhotos[i].id]}))};
+ return {title:titles[type],subtitle:version%2?'사진 사이에 남겨 둔 기록':'세 장의 사진, 하나의 이야기',coverPhotoId:'demo_02',sections:paragraphs.map((text,i)=>({heading:headings[type][i],paragraphs:[text,details[i],...(imagined[i]?[imagined[i]]:[]),...memory.filter((_,j)=>j%3===i).map(value=>`사진 밖의 기억도 적어 둔다.\n${value}`)],relatedPhotoIds:[demoPhotos[i].id]}))};
 }

@@ -34,26 +34,28 @@ npm start
 - `components/between/BetweenApp.tsx`: screen components and accessible interactions.
 - `lib/images/compress.ts`: image optimization, EXIF capture date, stable/manual order.
 - `lib/openai/`: server-only client/config, distinct prompts, Zod schemas, bounded body parsing, safe error mapping, Responses Structured Outputs parsing.
-- `lib/demo/demoData.ts`: independent demo data, 25 type/tone combinations and local deterministic generator.
+- `lib/demo/demoData.ts`: independent demo data, 20 visible type/tone combinations and local deterministic generator.
 - `public/demo/`: replaceable image assets and license credits.
 
 ## API flow
 
 1. `POST /api/analyze` accepts a multipart form with metadata and optimized images. All 3–20 images go to a single multimodal Responses request; IDs and order are checked on input and output.
-2. `POST /api/questions` receives the validated analysis and returns 0–3 questions.
+2. `POST /api/questions` receives the validated analysis and returns 0–5 questions.
 3. `POST /api/story` receives analysis, user answers, format and tone. Subsequent generations reuse the original analysis and answers.
 
-Every request uses `store: false`. Server-only modules prevent client imports. The SDK timeout is 90 seconds, with SDK automatic retries disabled. No image/answer/story logging, persistent database or server disk storage. `store:false` controls response storage; provider abuse-monitoring retention is subject to OpenAI account policies.
+Every request uses `store: false`. Server-only modules prevent client imports. The SDK timeout is 180 seconds, with SDK automatic retries disabled. No image/answer/story logging, persistent database or server disk storage. `store:false` controls response storage; provider abuse-monitoring retention is subject to OpenAI account policies.
 
 Images: JPEG, PNG, WebP, original up to 30MB each; sequential browser optimization to at most 1600px long edge, adaptive JPEG quality/downscale, target <=210KB. At most 20 copies fit below the 5MB API body limit. Server validates MIME, image magic bytes, counts, unique IDs, order and byte bounds. JSON endpoints stream-limit the body to 300KB before parsing. React text nodes render all content; never raw HTML. Original images remain object URLs in the browser. Refresh starts a new session.
 
-Memory Mode transmits direct observations as VERIFIED VISUAL FACTS, nonempty answers as VERIFIED USER CONTEXT, and explicitly forbidden uncertain inferences separately. Named locations, relations, emotions, dialogue and unseen events may not be invented. Story Mode alone permits fiction and always shows a disclaimer. These constraints are prompt based: no model can guarantee perfect factual fidelity; review final generated records before use.
+The creativity control (0, 25, 50, 75, 100) governs permission to invent in every format, not an exact factual percentage. Zero uses verified observations and user answers only. Nonzero results and copied text disclose creative reconstruction. Tone guides use essay, fiction, cinema and poetry techniques; no specific author imitation. Factual fidelity remains prompt-based.
+
+Chapter planning is deterministic: preserve user order, split at an absolute gap of at least one hour between known capture timestamps, at scene changes, or after three photos. Missing timestamps do not establish elapsed time. At least three chapters are planned, up to twenty. Structured output requires one section per plan entry; the server assigns its exact photo IDs. Each body has a minimum of 360 characters (260 for ten or more chapters). The UI gallery reads intrinsic dimensions, aligns row heights without cropping, and stacks images on phones.
 
 ## Demo and validation
 
-Demo branches before any API call, uses local photographs and deterministic prose, and supports typed context, five formats, five tones, regenerate, copy and reset. Photographs are independent sample images, not documentary evidence of one trip. Credits are in `public/demo/CREDITS.md`.
+Demo branches before any API call, uses local photographs and deterministic prose, and supports typed context, five formats, four tones, regenerate, copy and reset. Photographs are independent sample images, not documentary evidence of one trip. Credits are in `public/demo/CREDITS.md`.
 
-Tests cover every demo combination, schema bounds, valid photo references, empty answers, original user text, EXIF completeness and manual-order precedence. Browser QA includes demo end-to-end, Memory/Story modes, mobile layout, copy, file selection, limits, reorder/delete and error recovery. Because no API key was supplied, live OpenAI generation is implemented but cannot be end-to-end verified until a server key is configured. No mock API handler is used.
+Tests cover every demo combination, schema bounds, valid photo references, empty answers, original user text, EXIF completeness and manual-order precedence. Browser QA includes demo end-to-end, Memory/Story modes, mobile layout, copy, file selection, limits, reorder/delete and error recovery. Live analysis, questions and story generation have been verified with the configured server key. The chapter upgrade produced three hourly chapters totaling 1,245 Korean characters in a live generation test. No mock API handler is used.
 
 ## Submission
 
