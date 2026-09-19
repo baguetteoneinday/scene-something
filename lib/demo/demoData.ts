@@ -13,7 +13,7 @@ export const demoStoryVariants:Record<WritingTone,[string,string,string]>={
  cinematic:['넓은 화면. 옅은 하늘 아래 물결이 길게 놓여 있다. 젖은 모래 위에는 빛이 남는다.','화면은 밝은 절벽으로 이어진다. 자갈 해안의 한쪽에 걷는 사람이 작게 보인다.','가까운 장면. 나무 테이블, 흰 잔, 그 옆의 숟가락. 서로 다른 크기의 풍경이 세 컷 안에 놓인다.'],
  literary:['바다는 가느다란 선으로 하늘과 맞닿아 있다. 모래 위의 물기는 그 선 아래 놓인 빛을 받아 적는다.','흰 절벽과 자갈 사이에 사람의 모습이 있다. 풍경이 차지한 넓이와 사람이 차지한 넓이가 한 장 안에서 만난다.','둥근 잔의 테두리가 커피를 감싼다. 프레임이 풍경을 담듯, 작은 잔도 제 안의 것을 담고 있다.'],
 };
-export function makeDemoStory(type:StoryType,tone:WritingTone,answers:UserContextAnswer[],version=0,letter:LetterDetails=emptyLetterDetails,creativity:Creativity=type==='fiction'?100:0):GeneratedStory {
+function makeDemoDraft(type:StoryType,tone:WritingTone,answers:UserContextAnswer[],version=0,letter:LetterDetails=emptyLetterDetails,creativity:Creativity=type==='fiction'?100:0):GeneratedStory {
  const memory=answers.filter(a=>a.answer.trim()).map(a=>a.answer.trim());
  const details=[
  '하늘과 바다가 만나는 가느다란 경계를 따라 시선을 옮긴다. 화면 가까이에는 젖은 모래가 있고, 그 너머에는 물결이 놓여 있다. 하나의 사진 안에서도 가까운 자리와 먼 자리가 서로 다른 결을 보여 준다. 이 풍경의 이름과 그날의 사정은 사진만으로 알 수 없다. 그래서 보이는 것부터 천천히 읽어 본다.',
@@ -36,4 +36,26 @@ export function makeDemoStory(type:StoryType,tone:WritingTone,answers:UserContex
  if(type==='travel')paragraphs[0]='사진의 순서대로 풍경을 기록한다. '+paragraphs[0];
  if(type==='essay'&&version%2)paragraphs[2]+=' 사진이 남긴 것은 장면이고, 그 사이를 채우는 것은 지금 적는 문장이다.';
  return {title:titles[type],subtitle:version%2?'사진 사이에 남겨 둔 기록':'세 장의 사진, 하나의 이야기',coverPhotoId:'demo_02',sections:paragraphs.map((text,i)=>({heading:headings[type][i],paragraphs:[text,details[i],...(imagined[i]?[imagined[i]]:[]),...memory.filter((_,j)=>j%3===i).map(value=>`사진 밖의 기억도 적어 둔다.\n${value}`)],relatedPhotoIds:[demoPhotos[i].id]}))};
+}
+
+export function makeDemoStory(type:StoryType,tone:WritingTone,answers:UserContextAnswer[],version=0,letter:LetterDetails=emptyLetterDetails,creativity:Creativity=type==='fiction'?100:0,plan?:{photoIds:string[]}[]):GeneratedStory {
+ const draft=makeDemoDraft(type,tone,answers,version,letter,creativity);
+ if(type==='diary'){
+  const scenes=[
+   '옅은 하늘 아래로 바다가 길게 펼쳐져 있었다. 젖은 모래와 물결이 맞닿은 자리에는 작은 돌들이 흩어져 있었다. 멀리서는 하늘과 바다의 경계가 가늘게 이어졌다.',
+   '밝은 절벽 아래로 자갈 해안이 이어졌다. 넓은 풍경 사이로 걷는 사람의 모습이 작았다. 절벽의 밝은 면과 발밑 자갈의 결이 나란히 놓여 있었다.',
+   '나무 테이블 위에는 흰 커피 잔과 받침이 있었다. 잔 옆에는 작은 숟가락이 놓여 있었다. 넓게 펼쳐진 바다와 해안, 그리고 가까이 놓인 커피 한 잔까지. 오늘의 기록에 이 장면들을 함께 남긴다.'
+  ];
+  draft.title='바다와 커피가 있던 날';
+  draft.sections=scenes.map((scene,i)=>({heading:['바다 곁에서','해안을 따라','커피 한 잔'][i],paragraphs:[scene,...answers.filter(a=>a.answer.trim()).filter((_,j)=>j%3===i).map(a=>a.answer.trim()),...(creativity>0?['잠시 마음속으로 이 하루에 작은 이름을 붙여 보았다. 서두르지 않는 날이라고.']:[])],relatedPhotoIds:[demoPhotos[i].id]}));
+ }
+ if(!plan)return draft;
+ const used=new Set<number>();
+ const sections=plan.map((chapter,i)=>{
+  const matching=draft.sections.filter((section,j)=>{if(section.relatedPhotoIds.some(id=>chapter.photoIds.includes(id))){used.add(j);return true;}return false;});
+  return {heading:type==='letter'?null:matching[0]?.heading??`${i+1}장`,paragraphs:matching.flatMap(s=>s.paragraphs),relatedPhotoIds:chapter.photoIds};
+ });
+ draft.sections.forEach((section,i)=>{if(!used.has(i))sections.at(-1)?.paragraphs.push(...section.paragraphs);});
+ for(const section of sections)if(section.paragraphs.length>8)section.paragraphs=[...section.paragraphs.slice(0,7),section.paragraphs.slice(7).join('\n\n')];
+ return {...draft,sections};
 }

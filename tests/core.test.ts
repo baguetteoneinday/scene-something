@@ -47,23 +47,37 @@ test('letter honors recipient, intended message and signature without leaking in
  assert.ok(storyRequestSchema.safeParse(input).success);assert.ok(!storyRequestSchema.safeParse({...input,letterDetails:{...details,recipient:'x'.repeat(101)}}).success);
 });
 
-test('chapter boundaries enforce hour gaps, retain order and cover every photo once',async()=>{
- const {planChapters}=await import('../lib/story/chapters');
- const photos=Array.from({length:7},(_,i)=>({...demoPhotoAnalysis[0],id:`p${i}`,order:i+1,capturedAt:['2026-09-01T00:00:00Z','2026-09-01T00:59:59Z','2026-09-01T01:59:59Z',null,'2026-09-01T03:00:00Z','invalid','2026-09-01T02:00:00Z'][i]}));
- const analysis={photoAnalysis:photos,timeline:{...demoTimeline,chapters:[{...demoTimeline.chapters[0],photoIds:photos.map(p=>p.id)}]}};
- const chapters=planChapters(analysis);
- assert.deepEqual(chapters.flatMap(c=>c.photoIds),photos.map(p=>p.id));
- assert.ok(chapters.some(c=>c.photoIds.join(',')==='p0,p1'));
- assert.ok(chapters.findIndex(c=>c.photoIds.includes('p1'))!==chapters.findIndex(c=>c.photoIds.includes('p2')));
- assert.ok(chapters.findIndex(c=>c.photoIds.includes('p3'))!==chapters.findIndex(c=>c.photoIds.includes('p4')));
- assert.ok(chapters.findIndex(c=>c.photoIds.includes('p4'))!==chapters.findIndex(c=>c.photoIds.includes('p6')));
+
+test('all photo counts and chapter choices preserve order with 2–4 photos in each chapter',async()=>{
+ const {planChapters,chapterCountOptions}=await import('../lib/story/chapters');
+ for(let n=3;n<=20;n++){
+  const photos=Array.from({length:n},(_,i)=>({...demoPhotoAnalysis[0],id:`p${i}`,order:i+1,capturedAt:new Date(Date.UTC(2026,8,1,i)).toISOString()}));
+  const analysis={photoAnalysis:photos,timeline:demoTimeline};
+  for(const count of [null,...chapterCountOptions(n)]){
+   const plan=planChapters(analysis,count);
+   if(count!==null)assert.equal(plan.length,count);
+   assert.ok(plan.every(c=>c.photoIds.length>=2&&c.photoIds.length<=4));
+   assert.deepEqual(plan.flatMap(c=>c.photoIds),photos.map(p=>p.id));
+  }
+ }
+ assert.deepEqual(chapterCountOptions(20),[5,6,7,8,9,10]);
 });
-test('twenty hourly photos produce twenty chapters and creativity accepts only specified steps',async()=>{
+test('partition favors hour gap boundaries within requested count, with safe missing dates',async()=>{
  const {planChapters}=await import('../lib/story/chapters');
- const photos=Array.from({length:20},(_,i)=>({...demoPhotoAnalysis[0],id:`p${i}`,order:i+1,capturedAt:new Date(Date.UTC(2026,8,1,i)).toISOString()}));
- assert.equal(planChapters({photoAnalysis:photos,timeline:demoTimeline}).length,20);
- const base={photoAnalysis:demoPhotoAnalysis,timeline:demoTimeline,contextAnswers:[],storyType:'essay',writingTone:'plain'};
+ const photos=Array.from({length:6},(_,i)=>({...demoPhotoAnalysis[0],id:`p${i}`,order:i+1,capturedAt:new Date(Date.UTC(2026,8,1,i<2?0:2, i)).toISOString()}));
+ const analysis={photoAnalysis:photos,timeline:{...demoTimeline,chapters:[{...demoTimeline.chapters[0],photoIds:photos.map(p=>p.id)}]}};
+ assert.deepEqual(planChapters(analysis,2).map(c=>c.photoIds.length),[2,4]);
+ photos.forEach(p=>{p.capturedAt='';});assert.deepEqual(planChapters(analysis,2).map(c=>c.photoIds.length),[3,3]);
+});
+test('invalid chapter counts are rejected; demo diary avoids photo explanations and follows plan',async()=>{
+ const {planChapters}=await import('../lib/story/chapters');
+ const base={photoAnalysis:demoPhotoAnalysis,timeline:demoTimeline,contextAnswers:[],storyType:'diary',writingTone:'plain'};
+ assert.ok(storyRequestSchema.safeParse({...base,chapterCount:1}).success);
+ assert.ok(!storyRequestSchema.safeParse({...base,chapterCount:2}).success);
  for(const creativity of [0,25,50,75,100])assert.ok(storyRequestSchema.safeParse({...base,creativity}).success);
  assert.ok(!storyRequestSchema.safeParse({...base,creativity:30}).success);
- assert.ok(!tones.some(t=>t.id==='witty'));
+ const plan=planChapters(base,1);
+ const story=makeDemoStory('diary','plain',[],0,undefined,0,plan);
+ assert.equal(story.sections.length,1);assert.deepEqual(story.sections[0].relatedPhotoIds,demoPhotos.map(p=>p.id));
+ assert.ok(!/사진|화면|프레임|보인다/.test(story.sections.flatMap(s=>s.paragraphs).join('')));
 });

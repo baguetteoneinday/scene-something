@@ -49,7 +49,9 @@ Images: JPEG, PNG, WebP, original up to 30MB each; sequential browser optimizati
 
 The creativity control (0, 25, 50, 75, 100) governs permission to invent in every format, not an exact factual percentage. Zero uses verified observations and user answers only. Nonzero results and copied text disclose creative reconstruction. Tone guides use essay, fiction, cinema and poetry techniques; no specific author imitation. Factual fidelity remains prompt-based.
 
-Chapter planning is deterministic: preserve user order, split at an absolute gap of at least one hour between known capture timestamps, at scene changes, or after three photos. Missing timestamps do not establish elapsed time. At least three chapters are planned, up to twenty. Structured output requires one section per plan entry; the server assigns its exact photo IDs. Each body has a minimum of 360 characters (260 for ten or more chapters). The UI gallery reads intrinsic dimensions, aligns row heights without cropping, and stacks images on phones.
+Chapter planning is deterministic. Users choose automatic grouping (roughly three photos per chapter) or a feasible count between ceil(n/4) and floor(n/2). Dynamic programming preserves photo order, assigns every photo exactly once, keeps 2–4 photos in each chapter, and favors gaps of at least an hour and scene changes. Count and size constraints take precedence over splitting every time gap. The UI previews the photo numbers in each chapter. Structured output requires exactly the planned count and server-assigned photo IDs.
+
+Diary generation uses the user's first-person voice and supplied experiences instead of photo analysis. A draft containing screen/frame or photo-explanation phrases gets one revision pass. Creativity zero still forbids unsupported emotions and events; factual fidelity is not guaranteed by prompts alone.
 
 ## Demo and validation
 
