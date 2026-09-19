@@ -8,7 +8,7 @@ test('all 25 demo format/tone combinations produce valid stories with real image
  const ids=new Set(demoPhotos.map(p=>p.id));
  for(const t of storyTypes)for(const tone of tones){const story=storySchema.parse(makeDemoStory(t.id,tone.id,[]));assert.ok(ids.has(story.coverPhotoId));assert.ok(story.sections.every(s=>s.relatedPhotoIds.every(id=>ids.has(id))));assert.ok(story.sections.every(s=>s.paragraphs.join('').length>0));}
 });
-test('demo/schema agree; questions allow zero and reject four',()=>{assert.ok(analysisSchema.safeParse({photoAnalysis:demoPhotoAnalysis,timeline:demoTimeline}).success);assert.ok(questionsSchema.safeParse({questions:[]}).success);assert.ok(!questionsSchema.safeParse({questions:[...demoQuestions,demoQuestions[0]]}).success);});
+test('demo/schema agree; questions allow zero and five and reject six',()=>{assert.ok(analysisSchema.safeParse({photoAnalysis:demoPhotoAnalysis,timeline:demoTimeline}).success);assert.ok(questionsSchema.safeParse({questions:[]}).success);assert.ok(questionsSchema.safeParse({questions:demoQuestions}).success);assert.ok(!questionsSchema.safeParse({questions:[...demoQuestions,demoQuestions[0]]}).success);});
 test('input validation rejects invalid formats, oversized answers and undersized collections',()=>{
  const input={photoAnalysis:demoPhotoAnalysis,timeline:demoTimeline,contextAnswers:[],storyType:'essay',writingTone:'plain'};
  assert.ok(storyRequestSchema.safeParse(input).success);
@@ -28,4 +28,21 @@ test('nonempty user context is preserved verbatim without injecting HTML; empty 
  assert.ok(story.sections.some(s=>s.paragraphs.some(p=>p.includes(text))));
  const blank=makeDemoStory('essay','plain',[{questionId:'q',question:'Where?',answer:'  '}]);
  assert.deepEqual(blank,makeDemoStory('essay','plain',[]));
+});
+
+test('five answers survive all memory formats; sixth answer is rejected',()=>{
+ const answers=Array.from({length:5},(_,i)=>({questionId:`q${i}`,question:'기억?',answer:`고유한 기억 ${i}`}));
+ for(const type of ['essay','letter','diary','travel'] as const){const story=makeDemoStory(type,'plain',answers);for(const answer of answers)assert.ok(JSON.stringify(story).includes(answer.answer));}
+ const input={photoAnalysis:demoPhotoAnalysis,timeline:demoTimeline,storyType:'letter',writingTone:'plain',contextAnswers:answers};
+ assert.ok(storyRequestSchema.safeParse(input).success);assert.ok(!storyRequestSchema.safeParse({...input,contextAnswers:[...answers,answers[0]]}).success);
+});
+test('letter honors recipient, intended message and signature without leaking into other formats',()=>{
+ const details={recipient:'엄마',message:'그때 함께해 줘서 고마워요.',sender:'지호',speechStyle:'polite' as const};
+ const story=makeDemoStory('letter','plain',[],0,details);
+ assert.equal(story.title,'엄마에게');assert.ok(story.sections.every(s=>s.heading===null));
+ assert.ok(JSON.stringify(story).includes(details.message));assert.ok(JSON.stringify(story).includes('지호 드림'));
+ assert.deepEqual(makeDemoStory('essay','plain',[],0,details),makeDemoStory('essay','plain',[]));
+ assert.equal(makeDemoStory('letter','plain',[]).title,'그날의 나에게');
+ const input={photoAnalysis:demoPhotoAnalysis,timeline:demoTimeline,contextAnswers:[],storyType:'letter',writingTone:'plain',letterDetails:details};
+ assert.ok(storyRequestSchema.safeParse(input).success);assert.ok(!storyRequestSchema.safeParse({...input,letterDetails:{...details,recipient:'x'.repeat(101)}}).success);
 });

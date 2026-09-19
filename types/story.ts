@@ -1,5 +1,5 @@
 import type { z } from 'zod';
-import type { analysisSchema, questionsSchema, storySchema } from '@/lib/openai/schemas';
+import type { analysisSchema, questionsSchema, storySchema, letterDetailsSchema } from '@/lib/openai/schemas';
 export type Analysis = z.infer<typeof analysisSchema>;
 export type PhotoAnalysis = Analysis['photoAnalysis'][number];
 export type StoryTimeline = Analysis['timeline'];
@@ -18,3 +18,6 @@ export const storyTypes: { id: StoryType; label: string; en: string; description
   {id:'fiction',label:'소설',en:'Short story',description:'사진에서 영감을 받아 새로운 이야기를 만듭니다.'},
 ];
 export const tones: { id: WritingTone; label: string }[] = [{id:'plain',label:'담백하게'},{id:'emotional',label:'감성적으로'},{id:'witty',label:'유쾌하게'},{id:'cinematic',label:'영화처럼'},{id:'literary',label:'문학적으로'}];
+
+export type LetterDetails = z.infer<typeof letterDetailsSchema>;
+export const emptyLetterDetails:LetterDetails = {recipient:'',message:'',sender:'',speechStyle:'casual'};
