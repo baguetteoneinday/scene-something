@@ -10,7 +10,7 @@ test('all available demo format/tone combinations produce valid stories with rea
 });
 test('demo/schema agree; question schema accepts expanded sets and rejects more than twenty-two',()=>{assert.ok(analysisSchema.safeParse({photoAnalysis:demoPhotoAnalysis,timeline:demoTimeline}).success);assert.ok(questionsSchema.safeParse({questions:[]}).success);assert.ok(questionsSchema.safeParse({questions:demoQuestions}).success);assert.ok(!questionsSchema.safeParse({questions:Array.from({length:23},()=>demoQuestions[0])}).success);});
 test('input validation rejects invalid formats, oversized answers and undersized collections',()=>{
- const input={photoAnalysis:demoPhotoAnalysis,timeline:demoTimeline,contextAnswers:[],storyType:'diary',writingTone:'plain'};
+ const input={photoAnalysis:demoPhotoAnalysis,timeline:demoTimeline,contextAnswers:[],storyType:'record',writingTone:'plain'};
  assert.ok(storyRequestSchema.safeParse(input).success);
  assert.ok(!storyRequestSchema.safeParse({...input,storyType:'unknown'}).success);
  assert.ok(!storyRequestSchema.safeParse({...input,photoAnalysis:demoPhotoAnalysis.slice(0,2)}).success);
@@ -32,8 +32,8 @@ test('nonempty user context is preserved verbatim without injecting HTML; empty 
 
 test('answers survive memory formats and server caps oversized answer sets',()=>{
  const answers=Array.from({length:5},(_,i)=>({questionId:`q${i}`,question:'기억?',answer:`고유한 기억 ${i}`}));
- for(const type of ['essay','letter','diary','travel'] as const){const story=makeDemoStory(type,'plain',answers);for(const answer of answers)assert.ok(JSON.stringify(story).includes(answer.answer));}
- const input={photoAnalysis:demoPhotoAnalysis,timeline:demoTimeline,storyType:'diary',writingTone:'plain',contextAnswers:answers};
+ for(const type of ['essay','letter','record','travel'] as const){const story=makeDemoStory(type,'plain',answers);for(const answer of answers)assert.ok(JSON.stringify(story).includes(answer.answer));}
+ const input={photoAnalysis:demoPhotoAnalysis,timeline:demoTimeline,storyType:'record',writingTone:'plain',contextAnswers:answers};
  assert.ok(storyRequestSchema.safeParse(input).success);assert.ok(!storyRequestSchema.safeParse({...input,contextAnswers:Array.from({length:23},()=>answers[0])}).success);
 });
 test('letter honors recipient, intended message and signature without leaking into other formats',()=>{
@@ -43,7 +43,7 @@ test('letter honors recipient, intended message and signature without leaking in
  assert.ok(JSON.stringify(story).includes(details.message));assert.ok(JSON.stringify(story).includes('지호 드림'));
  assert.deepEqual(makeDemoStory('essay','plain',[],0,details),makeDemoStory('essay','plain',[]));
  assert.equal(makeDemoStory('letter','plain',[]).title,'그날의 나에게');
- const input={photoAnalysis:demoPhotoAnalysis,timeline:demoTimeline,contextAnswers:[],storyType:'diary',writingTone:'plain',letterDetails:details};
+ const input={photoAnalysis:demoPhotoAnalysis,timeline:demoTimeline,contextAnswers:[],storyType:'record',writingTone:'plain',letterDetails:details};
  assert.ok(storyRequestSchema.safeParse(input).success);assert.ok(!storyRequestSchema.safeParse({...input,letterDetails:{...details,recipient:'x'.repeat(101)}}).success);
 });
 
@@ -69,15 +69,15 @@ test('partition favors hour gap boundaries within requested count, with safe mis
  assert.deepEqual(planChapters(analysis,2).map(c=>c.photoIds.length),[2,4]);
  photos.forEach(p=>{p.capturedAt='';});assert.deepEqual(planChapters(analysis,2).map(c=>c.photoIds.length),[3,3]);
 });
-test('invalid chapter counts are rejected; demo diary avoids photo explanations and follows plan',async()=>{
+test('invalid chapter counts are rejected; demo record avoids photo explanations and follows plan',async()=>{
  const {planChapters}=await import('../lib/story/chapters');
- const base={photoAnalysis:demoPhotoAnalysis,timeline:demoTimeline,contextAnswers:[],storyType:'diary',writingTone:'plain'};
+ const base={photoAnalysis:demoPhotoAnalysis,timeline:demoTimeline,contextAnswers:[],storyType:'record',writingTone:'plain'};
  assert.ok(storyRequestSchema.safeParse({...base,chapterCount:1}).success);
  assert.ok(!storyRequestSchema.safeParse({...base,chapterCount:2}).success);
  for(const creativity of [0,25,50,75,100])assert.ok(storyRequestSchema.safeParse({...base,creativity}).success);
  assert.ok(!storyRequestSchema.safeParse({...base,creativity:30}).success);
  const plan=planChapters(base,1);
- const story=makeDemoStory('diary','plain',[],0,undefined,0,plan);
+ const story=makeDemoStory('record','plain',[],0,undefined,0,plan);
  assert.equal(story.sections.length,1);assert.deepEqual(story.sections[0].relatedPhotoIds,demoPhotos.map(p=>p.id));
  assert.ok(!/사진|화면|프레임|보인다/.test(story.sections.flatMap(s=>s.paragraphs).join('')));
 });
@@ -104,17 +104,17 @@ test('every fiction genre has a distinct story and input rejects unsupported gen
  assert.ok(!needsFormatRevision('드라마를 보다가 내 마음이 어떤지 생각해 보았다.'));
 });
 
-test('automatic chapter count responds to content and mandatory day gaps override all counts',async()=>{
+test('automatic chapter count responds to content and day gaps apply only to automatic counts',async()=>{
  const {planChapters,chapterCountOptions}=await import('../lib/story/chapters');
  function collection(n:number,step:number){const photos=Array.from({length:n},(_,i)=>({...demoPhotoAnalysis[0],id:`p${i}`,order:i+1,capturedAt:new Date(Date.UTC(2026,8,1)+i*step).toISOString()}));return {photoAnalysis:photos,timeline:{...demoTimeline,chapters:[{...demoTimeline.chapters[0],photoIds:photos.map(p=>p.id)}]}};}
  assert.equal(planChapters(collection(20,60000)).length,5);
  assert.equal(planChapters(collection(20,3600000)).length,10);
  const daily=collection(20,86400000);
- assert.equal(planChapters(daily).length,20);assert.deepEqual(chapterCountOptions(daily),[20]);
- assert.equal(planChapters(daily,5).length,20);
- const input={...daily,contextAnswers:[],storyType:'diary',writingTone:'plain'};
- assert.ok(!storyRequestSchema.safeParse({...input,chapterCount:5}).success);
- assert.ok(storyRequestSchema.safeParse({...input,chapterCount:20}).success);
+ assert.equal(planChapters(daily).length,20);assert.deepEqual(chapterCountOptions(daily),[5,6,7,8,9,10]);
+ assert.equal(planChapters(daily,5).length,5);
+ const input={...daily,contextAnswers:[],storyType:'record',writingTone:'plain'};
+ assert.ok(storyRequestSchema.safeParse({...input,chapterCount:5}).success);
+ assert.ok(!storyRequestSchema.safeParse({...input,chapterCount:20}).success);
  assert.ok(!storyRequestSchema.safeParse({...input,storyType:'letter'}).success);
  assert.ok(!storyRequestSchema.safeParse({...input,storyType:'essay'}).success);
  const mixed=collection(6,60000);mixed.photoAnalysis[3].capturedAt=new Date(Date.UTC(2026,8,3)).toISOString();mixed.photoAnalysis[4].capturedAt='';mixed.photoAnalysis[5].capturedAt=new Date(Date.UTC(2026,8,5)).toISOString();
@@ -129,4 +129,17 @@ test('question budgets grow with photo count and dates while keeping the final q
  const analysis={photoAnalysis:photos,timeline:demoTimeline};assert.equal(questionLimit(analysis),22);
  const qs=Array.from({length:30},(_,i)=>({...demoQuestions[0],id:`q${i}`,photoIds:['p0']}));
  const result=finalizeQuestions(qs,photos.map(p=>p.id),questionLimit(analysis));assert.equal(result.length,22);assert.equal(result.at(-1)!.id,'final_memory');
+});
+
+test('reconstruction disclosures and factual demo boundaries are separate from fiction',async()=>{
+ const {resultDisclosure,creativityLevels}=await import('../lib/story/style');
+ for(const level of creativityLevels){
+  assert.equal(Boolean(resultDisclosure(level,false)),level>=50);
+  assert.match(resultDisclosure(level,true)!,/AI가 창작한 단편소설/);
+  for(const type of ['record','travel'] as const){const story=makeDemoStory(type,'plain',[],0,undefined,level);assert.ok(!/상상 속 인물|서점|엽서|마음속으로|오늘은/.test(JSON.stringify(story)));}
+ }
+ assert.match(resultDisclosure(100,false)!,/실제 기억과 다른/);
+ const base={photoAnalysis:demoPhotoAnalysis,timeline:demoTimeline,contextAnswers:[],writingTone:'plain'};
+ assert.ok(storyRequestSchema.safeParse({...base,storyType:'record'}).success);
+ assert.ok(!storyRequestSchema.safeParse({...base,storyType:'diary'}).success);
 });

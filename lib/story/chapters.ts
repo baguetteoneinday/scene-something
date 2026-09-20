@@ -15,13 +15,18 @@ function boundaries(analysis:Analysis){
  return {photos,cuts,starts,lengths};
 }
 export function chapterCountOptions(input:number|Analysis){
- const lengths=typeof input==='number'?[input]:boundaries(input).lengths;
+ const lengths=[typeof input==='number'?input:input.photoAnalysis.length];
  const min=lengths.reduce((sum,n)=>sum+Math.ceil(n/4),0);
  const max=lengths.reduce((sum,n)=>sum+Math.max(1,Math.floor(n/2)),0);
  return Array.from({length:Math.max(0,max-min+1)},(_,i)=>min+i);
 }
 export function planChapters(analysis:Analysis,requestedCount?:number|null){
- const {photos,cuts,starts}=boundaries(analysis);const options=chapterCountOptions(analysis);
+ const boundary=boundaries(analysis);const {photos,cuts}=boundary;
+ const manual=requestedCount!=null&&chapterCountOptions(analysis).includes(requestedCount);
+ const starts=manual?[0,photos.length]:boundary.starts;
+ const min=boundary.lengths.reduce((sum,n)=>sum+Math.ceil(n/4),0);
+ const max=boundary.lengths.reduce((sum,n)=>sum+Math.max(1,Math.floor(n/2)),0);
+ const options=manual?[requestedCount!]:Array.from({length:max-min+1},(_,i)=>min+i);
  const memo=new Map<string,{score:number;sizes:number[]}|null>();
  function solve(start:number,left:number):{score:number;sizes:number[]}|null{
   if(!left)return start===photos.length?{score:0,sizes:[]}:null;
@@ -42,5 +47,5 @@ export function planChapters(analysis:Analysis,requestedCount?:number|null){
  let best:{score:number;sizes:number[]}|null=null;
  for(const count of counts){const candidate=solve(0,count);if(candidate&&(!best||candidate.score>best.score))best=candidate;}
  let offset=0;
- return (best?.sizes??[]).map(size=>{const start=offset;offset+=size;return {photoIds:photos.slice(start,offset).map(p=>p.id),reason:start?cuts[start].reason:'이야기의 시작'};});
+ return (best?.sizes??[]).map(size=>{const start=offset;offset+=size;return {photoIds:photos.slice(start,offset).map(p=>p.id),reason:start?(manual&&cuts[start].hard?'촬영 시간 간격 · 선택한 챕터 수 우선':cuts[start].reason):'이야기의 시작'};});
 }
