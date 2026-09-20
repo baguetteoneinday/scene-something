@@ -1,64 +1,195 @@
-# Between
+🌐 Live Demo: https://scene-something.bbung3088.workers.dev
 
-**사진과 사진 사이의 이야기를 기록하다.**
+# SCENE : something
 
-React 19, TypeScript, Next.js 16 App Router API, Tailwind 4, OpenAI official JS SDK + Responses API. Sites hosting uses Vinext's App Router compatibility build on Cloudflare Workers with Node compatibility. The bundled `next` dependency is retained; the hosting production artifact is the Vinext Worker build, not a Vercel deployment.
+**사진으로 남은 순간을, 글로 남깁니다.**
 
-## Run locally
+여러 장의 사진과 사용자의 기억을 연결해 기록·여행기·단편소설을 만드는 AI 웹 애플리케이션입니다. 사진에 담긴 풍경뿐 아니라 그때 있었던 일, 느꼈던 마음, 오래 남기고 싶은 생각을 하나의 글로 엮습니다.
 
-Node.js 22.13+ and npm required.
+
+## 해결하고자 한 문제
+
+사진은 많이 남지만 당시의 경험과 감정은 잊히고, 이를 직접 글로 기록하기는 번거롭습니다. SCENE : something은 **사진 → 기억 → 글**의 흐름으로 기록을 시작하는 부담을 줄이고자 합니다.
+
+## 사용 흐름
+
+1. 사진 3~20장을 올리고 순서를 정합니다.
+2. AI가 사진의 장면을 분석합니다.
+3. 관련 사진을 보며 핵심 기억과 감정에 답합니다. 모든 답변은 선택 사항입니다.
+4. 글의 형식, 분위기, 재구성 정도와 챕터 구성을 선택합니다.
+5. 사진과 함께 완성된 글을 읽고, 복사하거나 다시 생성합니다.
+
+질문에 답하지 않아도 생성할 수 있습니다. 다만 개인적인 경험과 생각을 알려줄수록 사용자의 기억에 가까운 글을 만들 수 있습니다.
+
+## 주요 기능
+
+### 세 가지 글 형식
+
+| 형식 | 설명 |
+| --- | --- |
+| 기록 | 사진 속 순간과 기억을 자연스러운 하나의 글로 남깁니다. 전형적인 일기 형식을 강제하지 않습니다. |
+| 여행기 | 확인된 장소와 이동, 경험, 만남, 기억에 남은 순간을 중심으로 씁니다. |
+| 소설 | 사진에서 영감을 받아 인물·목적·갈등·전환점·결말을 갖춘 단편을 창작합니다. |
+
+소설은 **일상·문학, 로맨스, 미스터리, 판타지, SF, 힐링** 장르를 지원합니다. 결과에는 `STORY MODE`와 AI 창작물 안내를 표시합니다.
+
+글의 분위기는 **담백하게, 감성적으로, 영화처럼, 문학적으로** 중 선택합니다. 분위기는 표현 방식이며, 감정 보완을 허용하는 재구성 정도와는 별도 설정입니다.
+
+### 기억과 감정을 묻는 질문
+
+자동으로 구성한 장면 묶음마다 핵심 경험이나 생각을 한 문장으로 적을 수 있습니다. 추가 질문은 필요한 사실 정보와 함께 당시의 감정, 지금 남은 마음, 그 순간의 의미를 묻습니다. 특정 장면에 대한 질문에는 해당 사진을 보여줍니다.
+
+질문 수는 사진과 자동 챕터 수에 따라 달라지며 최대 22개입니다. 마지막에는 항상 다음 질문이 포함됩니다.
+
+> 꼭 기록하고 싶은 기억이 있다면 적어주세요.
+
+모든 질문은 건너뛸 수 있습니다. “특별한 감정이 없었다”는 답변도 유효한 기억으로 취급합니다.
+
+### 재구성 슬라이더
+
+기록과 여행기는 **사실 그대로 ↔ 자유롭게 재구성** 슬라이더를 제공합니다. 숫자는 화면에 표시하지 않으며, 내부 값은 사실과 허구의 비율이 아니라 AI에게 허용하는 서술적 자유를 뜻합니다.
+
+| 내부 값 | 표시 단계 | 생성 지침 |
+| --- | --- | --- |
+| 0 | 사실 그대로 | 확인된 사실과 사용자가 입력한 감정·생각만 사용 |
+| 25 · 기본값 | 가볍게 연결 | 가벼운 느낌과 표현을 조금 보완 |
+| 50 | 자연스럽게 재구성 | 장면에 어울리는 감정과 짧은 생각을 추가 |
+| 75 | 풍부하게 표현 | 감정의 흐름과 내적 독백을 풍부하게 구성 |
+| 100 | 자유롭게 재구성 | 실제 장면을 중심으로 감정과 성찰을 자유롭게 구성 |
+
+직접 입력한 감정은 모든 단계에서 우선합니다. 높은 단계에서도 기록·여행기의 사건, 대화, 인물 관계 등을 임의로 만들지 않도록 지침을 적용합니다. 감정 보완이 허용된 결과와 복사한 글에는 단계별 안내가 포함됩니다.
+
+소설에는 이 슬라이더가 표시되지 않으며, 별도의 창작 지침을 사용합니다.
+
+### 자동·수동 챕터
+
+- **자동:** 촬영 시간 간격, 분석된 장면 변화와 사진 순서에 따라 챕터 수와 경계를 결정합니다. 알려진 촬영 시간 사이에 24시간 이상 간격이 있으면 분리하며, 이 경계에서는 사진 한 장짜리 챕터도 허용합니다.
+- **수동:** 한 챕터에 사진 2~4장을 담을 수 있는 범위에서 개수를 선택합니다. 24시간 분리 규칙보다 선택한 개수를 우선합니다.
+- 촬영 시간이 없는 사진의 날짜는 추측하지 않습니다. 모든 사진의 순서를 유지하고, 각 사진을 정확히 한 챕터에 배정합니다.
+- 생성 전에 챕터별 사진 구성을 확인할 수 있습니다.
+
+### 기록의 문체 유지
+
+기록은 전체 흐름과 공통 문체 기준을 먼저 계획한 뒤, **두 챕터씩 작성·검토**합니다. 최대 세 묶음을 동시에 처리하고 원래 순서대로 결합합니다.
+
+공통 문체 예시에서 문장 호흡과 생각의 전개를 참고하되, 예시의 사건을 사용자의 경험으로 가져오지 않도록 지시합니다. 검토에서는 사실성뿐 아니라 시점, 문장 리듬, 문단 전개, 사진 설명체로의 변화도 확인합니다. 챕터 수가 많다는 이유로 후반부의 목표 분량을 낮추지 않습니다.
+
+현재 문체 예시는 코드에 정의되어 있습니다. 사용자가 자신의 글을 별도로 업로드하거나 문체를 학습시키는 기능은 구현되어 있지 않습니다.
+
+## 로컬 실행
+
+### 준비 사항
+
+- Node.js **22.13 이상**과 npm
+- 실제 사진 분석·AI 생성에 사용할 서버용 `OPENAI_API_KEY`
+- API 키 없이도 이용할 수 있는 샘플 체험
+
+### 설치와 환경 설정
+
+프로젝트 폴더에서 실행합니다.
 
 ```sh
 npm ci
+```
+
+`.env`가 없는 경우에만 예시 파일을 복사합니다. 이미 키를 설정했다면 이 단계는 건너뜁니다.
+
+```sh
 cp .env.example .env
-# Add OPENAI_API_KEY to .env (never NEXT_PUBLIC_OPENAI_API_KEY)
+```
+
+`.env`의 `OPENAI_API_KEY`에 발급받은 키를 입력합니다.
+
+```dotenv
+OPENAI_API_KEY=
+OPENAI_MODEL=gpt-5.4-mini
+```
+
+이 저장소의 기본 모델 설정은 `gpt-5.4-mini`입니다. 키는 서버에서만 사용하며, `NEXT_PUBLIC_` 접두사가 붙은 환경 변수에 넣지 않습니다. `.env`는 Git 추적 대상에서 제외됩니다.
+
+### 개발 서버
+
+```sh
 npm run dev
 ```
 
-Open the printed local URL. Demo works without credentials. Configure `OPENAI_MODEL` to change the model in one place. Default `gpt-5.4-mini` supports image input, Responses and Structured Outputs: https://developers.openai.com/api/docs/models/gpt-5.4-mini . SDK schema reference: https://developers.openai.com/api/docs/guides/structured-outputs . Runtime secrets must be configured separately for deployed Sites; `.env` is excluded from Git and archives.
+터미널에 표시되는 주소를 브라우저에서 엽니다. 기본 주소는 `http://localhost:5173`입니다. 종료하려면 터미널에서 `Control+C`를 누릅니다.
+
+### 검사와 빌드
 
 ```sh
-npm run lint
 npm run typecheck
 npm test
+npm run lint
 npm run build
 npm start
 ```
 
-`npm start` serves the production Worker locally. Production bindings receive OPENAI_API_KEY as a secret and OPENAI_MODEL as a runtime variable. Changing deployed secrets requires redeployment. No browser API key input exists.
+`npm start`는 빌드된 Cloudflare Worker를 로컬에서 실행합니다. 사진 분석과 글 생성에는 인터넷 연결 및 사용 가능한 API 키가 필요합니다.
 
-## Routes and responsibilities
+## 기술 구성
 
-- `/`, `/upload`, `/analysis`, `/context`, `/style`, `/story`: shared session provider across navigation.
-- `context/StorySessionContext.tsx`: reducer, session state and object URL cleanup.
-- `components/between/BetweenApp.tsx`: screen components and accessible interactions.
-- `lib/images/compress.ts`: image optimization, EXIF capture date, stable/manual order.
-- `lib/openai/`: server-only client/config, distinct prompts, Zod schemas, bounded body parsing, safe error mapping, Responses Structured Outputs parsing.
-- `lib/demo/demoData.ts`: independent demo data, 12 visible type/tone combinations and local deterministic generator.
-- `public/demo/`: replaceable image assets and license credits.
+| 영역 | 사용 기술 |
+| --- | --- |
+| 화면·상태 | React 19, TypeScript, React Context |
+| 라우팅·API | Next.js 16 App Router 구조, Vinext 호환 런타임 |
+| 디자인 | Tailwind CSS 4, Radix UI 기반 컴포넌트 |
+| AI | OpenAI 공식 JavaScript SDK, Responses API, Structured Outputs |
+| 데이터 검증 | Zod |
+| 이미지 처리 | 브라우저 Canvas, EXIF 추출 |
+| 배포 | Sites, Cloudflare Workers |
 
-## API flow
+Next.js 의존성을 유지하지만, 이 프로젝트의 운영 배포물은 Vinext로 빌드한 Cloudflare Worker입니다.
 
-1. `POST /api/analyze` accepts a multipart form with metadata and optimized images. All 3–20 images go to a single multimodal Responses request; IDs and order are checked on input and output.
-2. `POST /api/questions` receives the validated analysis and returns contextual questions with valid photoIds and a mandatory final free-memory question. The budget grows with photo count and automatic chapter count, up to 22 total for widely separated collections. The UI displays the referenced photos beside each question.
-3. `POST /api/story` receives analysis, user answers, format and tone. Subsequent generations reuse the original analysis and answers.
+## 코드 구조
 
-Every request uses `store: false`. Server-only modules prevent client imports. The SDK timeout is 180 seconds, with SDK automatic retries disabled. No image/answer/story logging, persistent database or server disk storage. `store:false` controls response storage; provider abuse-monitoring retention is subject to OpenAI account policies.
+| 경로 | 역할 |
+| --- | --- |
+| `app/` | 메인·업로드·분석·질문·설정·결과 페이지와 서버 API |
+| `components/between/` | 공통 화면, 사진 배치, 재구성 슬라이더, 챕터·장르 선택 |
+| `context/StorySessionContext.tsx` | 현재 사진, 답변, 설정, 결과의 세션 상태 |
+| `lib/brand.ts` | 브랜드명과 소개 문구 |
+| `lib/images/compress.ts` | 사진 압축, EXIF 추출, 사진 정렬 |
+| `lib/openai/` | 서버용 AI 연결, 프롬프트, 응답 검증과 오류 처리 |
+| `lib/story/questions.ts` | 핵심 기억·감정 질문과 마지막 질문 구성 |
+| `lib/story/chapters.ts` | 자동·수동 챕터 계산 |
+| `lib/story/recordWriter.ts` | 기록의 공통 문체 예시와 챕터별 작성·검토 |
+| `lib/story/style.ts` | 분위기, 감정 재구성 단계와 결과 안내 |
+| `lib/story/formats.ts` | 형식·소설 장르별 지침 |
+| `lib/demo/demoData.ts` | API 호출 없이 동작하는 샘플 데이터와 생성기 |
+| `public/demo/` | 샘플 사진과 출처 |
+| `tests/core.test.ts` | 입력 검증, 질문·챕터·데모·생성 흐름 테스트 |
 
-Images: JPEG, PNG, WebP, original up to 30MB each; sequential browser optimization to at most 1600px long edge, adaptive JPEG quality/downscale, target <=210KB. At most 20 copies fit below the 5MB API body limit. Server validates MIME, image magic bytes, counts, unique IDs, order and byte bounds. JSON endpoints stream-limit the body to 300KB before parsing. React text nodes render all content; never raw HTML. Original images remain object URLs in the browser. Refresh starts a new session.
+일부 내부 폴더명과 패키지명에는 기존 이름인 `between`이 남아 있습니다. 사용자에게 표시되는 서비스명은 **SCENE : something**입니다.
 
-The creativity control (0, 25, 50, 75, 100) governs permission to invent in memory formats, not an exact factual percentage. Zero uses verified observations and user answers only. Nonzero results and copied text disclose creative reconstruction. Tone guides use essay, fiction, cinema and poetry techniques; no specific author imitation. Factual fidelity remains prompt-based.
+## API 흐름
 
-Chapter planning is deterministic. Automatic grouping jointly chooses boundaries and chapter count based on capture gaps and scene changes. Gaps of at least 24 hours between known capture timestamps are mandatory boundaries, even across missing timestamps. Dynamic programming preserves photo order and every photo exactly once. Chapters normally hold 2–4 photos, but singleton day segments are retained. Manual count options respect these mandatory boundaries. The UI previews the photo numbers in each chapter. Structured output requires exactly the planned count and server-assigned photo IDs.
+1. `POST /api/analyze`: 압축된 사진과 순서·촬영 시간 정보를 받아 시각적 관찰과 장면 구성을 반환합니다.
+2. `POST /api/questions`: 분석 결과를 바탕으로 핵심 기억, 감정, 필요한 맥락을 묻습니다. 질문별 사진 참조와 마지막 기억 질문을 구성합니다.
+3. `POST /api/story`: 분석 결과, 답변, 형식, 분위기, 재구성 정도와 챕터 선택을 받아 글을 생성합니다. 기록은 계획 → 챕터별 작성 → 검토를 거칩니다. 다시 생성할 때는 기존 분석과 답변을 재사용합니다.
 
-All memory formats have distinct narrative guides. Diary style uses abstract traits from user-provided writing samples without storing their personal events or importing them as new facts. Photo-explanation phrases trigger one revision; persistent failures return a retry message. Fiction uses a separate prompt with six genres and free invention, independent of memory answers and creativity settings. It plans a plot and supplies a separate concluding scene so the result is a complete short story. Creativity zero still forbids unsupported emotions and events; factual fidelity is not guaranteed by prompts alone.
+서버는 사진 ID, 입력 크기와 응답 구조를 검사하며, 최종 결과의 사진 배정은 계산된 챕터 구성을 따릅니다.
 
-## Demo and validation
+## 사진과 데이터 처리
 
-Demo branches before any API call, uses local photographs and deterministic prose, and supports typed context, three formats (diary, travel, fiction), four tones, regenerate, copy and reset. Photographs are independent sample images, not documentary evidence of one trip. Credits are in `public/demo/CREDITS.md`.
+- JPEG·PNG·WebP 형식, 사진 3~20장, 원본 한 장당 최대 30MB를 지원합니다.
+- 브라우저에서 긴 변 최대 1,600px, 파일당 210,000바이트 이하의 분석용 JPEG로 압축합니다. 압축할 수 없는 파일은 오류를 안내합니다.
+- 원본은 브라우저의 객체 URL로 표시하고, 분석용 사본을 서버를 거쳐 AI에 전달합니다.
+- 답변과 결과는 현재 브라우저 세션에서 관리합니다. 새로고침하면 작업이 초기화되므로 필요한 글은 복사해 보관해야 합니다.
+- 애플리케이션에는 사진·답변·결과를 영구 보관하는 데이터베이스나 기록함이 없습니다.
+- AI 요청에는 `store: false`를 설정합니다. 이 설정만으로 외부 제공자의 모든 데이터 보관이 금지되는 것은 아닙니다.
+- API 키는 서버 환경 변수로 관리합니다. 소스 코드를 공유할 때 `.env`, 개인 사진과 임시 테스트 결과를 포함하지 않습니다.
 
-Tests cover every demo combination, schema bounds, valid photo references, empty answers, original user text, EXIF completeness and manual-order precedence. Browser QA includes demo end-to-end, Memory/Story modes, mobile layout, copy, file selection, limits, reorder/delete and error recovery. Live analysis, questions and story generation have been verified with the configured server key. The chapter upgrade produced three hourly chapters totaling 1,245 Korean characters in a live generation test. No mock API handler is used.
+## 검증과 현재 한계
 
-## Submission
+자동 테스트는 형식·입력 검증, 사진 순서, 자동·수동 챕터, 질문 수와 감정 질문 확보, 감정 보완 안내, 데모, 기록 생성의 동시 처리 제한과 챕터 순서를 다룹니다.
 
-Sites starts with owner-only access. A hackathon URL must have its audience changed to public or have judges added before submission; deploying privately alone does not grant judges access. Configure the OpenAI secret and complete one real-photo run before treating the production AI flow as verified.
+개발 과정에서 실제 AI 연결, 사진 업로드, 선택 질문, 기록·여행기·소설 생성, 10·20챕터 기록 생성, 모바일 화면, 복사·재생성을 확인했습니다. 샘플 체험은 고정된 예시 생성기이므로 실제 AI 결과와 같지는 않습니다. 사진 출처는 [샘플 사진 크레딧](public/demo/CREDITS.md), 브랜드 글꼴 라이선스는 [Caveat OFL](public/fonts/OFL-Caveat.txt)에 있습니다.
+
+AI의 사실성·감정 보완·문체 일관성은 프롬프트와 검토 단계로 제어하며, 모든 결과의 정확도나 문학적 품질을 보장하지는 않습니다. 입력한 기억이 적으면 풍경 묘사의 비중이 커질 수 있습니다. 챕터가 많으면 작성·검토 호출도 늘어나 생성 시간과 API 비용이 증가할 수 있습니다.
+
+## 배포와 공유
+
+`.openai/hosting.json`은 기존 Sites 프로젝트 연결 정보입니다. 로컬의 `.env`와 운영 사이트의 환경 변수는 별도로 관리합니다. 로컬 파일을 수정하는 것만으로 운영 사이트가 갱신되지는 않습니다.
+
+운영 사이트에는 서버용 API 키를 별도로 설정해야 합니다. 해커톤에 제출할 때는 심사자가 실제로 링크를 열 수 있도록 사이트의 공유 범위를 확인해야 합니다. 비공개로 게시된 사이트는 주소를 전달하는 것만으로 접근 권한이 생기지 않습니다.
