@@ -34,13 +34,13 @@ npm start
 - `components/between/BetweenApp.tsx`: screen components and accessible interactions.
 - `lib/images/compress.ts`: image optimization, EXIF capture date, stable/manual order.
 - `lib/openai/`: server-only client/config, distinct prompts, Zod schemas, bounded body parsing, safe error mapping, Responses Structured Outputs parsing.
-- `lib/demo/demoData.ts`: independent demo data, 20 visible type/tone combinations and local deterministic generator.
+- `lib/demo/demoData.ts`: independent demo data, 12 visible type/tone combinations and local deterministic generator.
 - `public/demo/`: replaceable image assets and license credits.
 
 ## API flow
 
 1. `POST /api/analyze` accepts a multipart form with metadata and optimized images. All 3–20 images go to a single multimodal Responses request; IDs and order are checked on input and output.
-2. `POST /api/questions` receives the validated analysis and returns up to four contextual questions with valid photoIds, followed by a mandatory final free-memory question (at most five total). The UI displays the referenced photos beside each question.
+2. `POST /api/questions` receives the validated analysis and returns contextual questions with valid photoIds and a mandatory final free-memory question. The budget grows with photo count and automatic chapter count, up to 22 total for widely separated collections. The UI displays the referenced photos beside each question.
 3. `POST /api/story` receives analysis, user answers, format and tone. Subsequent generations reuse the original analysis and answers.
 
 Every request uses `store: false`. Server-only modules prevent client imports. The SDK timeout is 180 seconds, with SDK automatic retries disabled. No image/answer/story logging, persistent database or server disk storage. `store:false` controls response storage; provider abuse-monitoring retention is subject to OpenAI account policies.
@@ -49,13 +49,13 @@ Images: JPEG, PNG, WebP, original up to 30MB each; sequential browser optimizati
 
 The creativity control (0, 25, 50, 75, 100) governs permission to invent in memory formats, not an exact factual percentage. Zero uses verified observations and user answers only. Nonzero results and copied text disclose creative reconstruction. Tone guides use essay, fiction, cinema and poetry techniques; no specific author imitation. Factual fidelity remains prompt-based.
 
-Chapter planning is deterministic. Users choose automatic grouping (roughly three photos per chapter) or a feasible count between ceil(n/4) and floor(n/2). Dynamic programming preserves photo order, assigns every photo exactly once, keeps 2–4 photos in each chapter, and favors gaps of at least an hour and scene changes. Count and size constraints take precedence over splitting every time gap. The UI previews the photo numbers in each chapter. Structured output requires exactly the planned count and server-assigned photo IDs.
+Chapter planning is deterministic. Automatic grouping jointly chooses boundaries and chapter count based on capture gaps and scene changes. Gaps of at least 24 hours between known capture timestamps are mandatory boundaries, even across missing timestamps. Dynamic programming preserves photo order and every photo exactly once. Chapters normally hold 2–4 photos, but singleton day segments are retained. Manual count options respect these mandatory boundaries. The UI previews the photo numbers in each chapter. Structured output requires exactly the planned count and server-assigned photo IDs.
 
 All memory formats have distinct narrative guides. Diary style uses abstract traits from user-provided writing samples without storing their personal events or importing them as new facts. Photo-explanation phrases trigger one revision; persistent failures return a retry message. Fiction uses a separate prompt with six genres and free invention, independent of memory answers and creativity settings. It plans a plot and supplies a separate concluding scene so the result is a complete short story. Creativity zero still forbids unsupported emotions and events; factual fidelity is not guaranteed by prompts alone.
 
 ## Demo and validation
 
-Demo branches before any API call, uses local photographs and deterministic prose, and supports typed context, five formats, four tones, regenerate, copy and reset. Photographs are independent sample images, not documentary evidence of one trip. Credits are in `public/demo/CREDITS.md`.
+Demo branches before any API call, uses local photographs and deterministic prose, and supports typed context, three formats (diary, travel, fiction), four tones, regenerate, copy and reset. Photographs are independent sample images, not documentary evidence of one trip. Credits are in `public/demo/CREDITS.md`.
 
 Tests cover every demo combination, schema bounds, valid photo references, empty answers, original user text, EXIF completeness and manual-order precedence. Browser QA includes demo end-to-end, Memory/Story modes, mobile layout, copy, file selection, limits, reorder/delete and error recovery. Live analysis, questions and story generation have been verified with the configured server key. The chapter upgrade produced three hourly chapters totaling 1,245 Korean characters in a live generation test. No mock API handler is used.
 

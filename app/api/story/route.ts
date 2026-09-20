@@ -19,7 +19,6 @@ export async function POST(request:Request){try{
   ...(data.storyType==='fiction'?{'FICTION GENRE':fictionGenres.find(g=>g.id===(data.fictionGenre??'literary'))}:{}),
   'TONE CRAFT GUIDE':toneGuides[data.writingTone],
   'CHAPTER PLAN':chapters,
-  ...(data.storyType==='letter'?{'VERIFIED LETTER DETAILS':data.letterDetails??{}}:{}),
   'VERIFIED VISUAL FACTS':data.photoAnalysis.map(p=>({id:p.id,order:p.order,...(data.storyType==='diary'?{}:{capturedAt:p.capturedAt}),observations:p.observations})),
   ...(data.storyType==='fiction'?{}:{'VERIFIED USER CONTEXT':data.contextAnswers.filter(a=>a.answer.trim())}),
   ...(data.storyType==='fiction'?{}:{'PRIORITY MEMORY TO PRESERVE':data.contextAnswers.find(a=>a.questionId==='final_memory')?.answer.trim()||null}),
@@ -34,7 +33,7 @@ export async function POST(request:Request){try{
  if((result.sections.some(s=>needsFormatRevision(s.body))||('ending' in result&&typeof result.ending==='string'&&needsFormatRevision(result.ending))))throw new AppError('STYLE_RETRY','글의 문체를 자연스럽게 다듬지 못했어요. 다시 만들어 주세요.',502);
  const ids=new Set(data.photoAnalysis.map(p=>p.id));
  result.coverPhotoId=ids.has(result.coverPhotoId)?result.coverPhotoId:data.photoAnalysis[0].id;
- const sections=result.sections.map((section,i)=>({heading:data.storyType==='letter'?null:section.heading,paragraphs:section.body.split(/\n\s*\n/).filter(p=>p.trim()).reduce<string[]>((all,p,i)=>{if(i<8)all.push(p);else all[7]+='\n\n'+p;return all;},[]),relatedPhotoIds:chapters[i].photoIds}));
+ const sections=result.sections.map((section,i)=>({heading:section.heading,paragraphs:section.body.split(/\n\s*\n/).filter(p=>p.trim()).reduce<string[]>((all,p,i)=>{if(i<8)all.push(p);else all[7]+='\n\n'+p;return all;},[]),relatedPhotoIds:chapters[i].photoIds}));
  if('ending' in result&&typeof result.ending==='string'){const last=sections.at(-1)!;if(last.paragraphs.length<8)last.paragraphs.push(result.ending);else last.paragraphs[7]+='\n\n'+result.ending;}
  return success(storySchema.parse({title:result.title,subtitle:result.subtitle,coverPhotoId:result.coverPhotoId,sections}));
 }catch(error){return apiError(error);}}

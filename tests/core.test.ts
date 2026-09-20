@@ -8,9 +8,9 @@ test('all available demo format/tone combinations produce valid stories with rea
  const ids=new Set(demoPhotos.map(p=>p.id));
  for(const t of storyTypes)for(const tone of tones){const story=storySchema.parse(makeDemoStory(t.id,tone.id,[]));assert.ok(ids.has(story.coverPhotoId));assert.ok(story.sections.every(s=>s.relatedPhotoIds.every(id=>ids.has(id))));assert.ok(story.sections.every(s=>s.paragraphs.join('').length>0));}
 });
-test('demo/schema agree; questions allow zero and five and reject six',()=>{assert.ok(analysisSchema.safeParse({photoAnalysis:demoPhotoAnalysis,timeline:demoTimeline}).success);assert.ok(questionsSchema.safeParse({questions:[]}).success);assert.ok(questionsSchema.safeParse({questions:demoQuestions}).success);assert.ok(!questionsSchema.safeParse({questions:[...demoQuestions,demoQuestions[0]]}).success);});
+test('demo/schema agree; question schema accepts expanded sets and rejects more than twenty-two',()=>{assert.ok(analysisSchema.safeParse({photoAnalysis:demoPhotoAnalysis,timeline:demoTimeline}).success);assert.ok(questionsSchema.safeParse({questions:[]}).success);assert.ok(questionsSchema.safeParse({questions:demoQuestions}).success);assert.ok(!questionsSchema.safeParse({questions:Array.from({length:23},()=>demoQuestions[0])}).success);});
 test('input validation rejects invalid formats, oversized answers and undersized collections',()=>{
- const input={photoAnalysis:demoPhotoAnalysis,timeline:demoTimeline,contextAnswers:[],storyType:'essay',writingTone:'plain'};
+ const input={photoAnalysis:demoPhotoAnalysis,timeline:demoTimeline,contextAnswers:[],storyType:'diary',writingTone:'plain'};
  assert.ok(storyRequestSchema.safeParse(input).success);
  assert.ok(!storyRequestSchema.safeParse({...input,storyType:'unknown'}).success);
  assert.ok(!storyRequestSchema.safeParse({...input,photoAnalysis:demoPhotoAnalysis.slice(0,2)}).success);
@@ -30,11 +30,11 @@ test('nonempty user context is preserved verbatim without injecting HTML; empty 
  assert.deepEqual(blank,makeDemoStory('essay','plain',[]));
 });
 
-test('five answers survive all memory formats; sixth answer is rejected',()=>{
+test('answers survive memory formats and server caps oversized answer sets',()=>{
  const answers=Array.from({length:5},(_,i)=>({questionId:`q${i}`,question:'기억?',answer:`고유한 기억 ${i}`}));
  for(const type of ['essay','letter','diary','travel'] as const){const story=makeDemoStory(type,'plain',answers);for(const answer of answers)assert.ok(JSON.stringify(story).includes(answer.answer));}
- const input={photoAnalysis:demoPhotoAnalysis,timeline:demoTimeline,storyType:'letter',writingTone:'plain',contextAnswers:answers};
- assert.ok(storyRequestSchema.safeParse(input).success);assert.ok(!storyRequestSchema.safeParse({...input,contextAnswers:[...answers,answers[0]]}).success);
+ const input={photoAnalysis:demoPhotoAnalysis,timeline:demoTimeline,storyType:'diary',writingTone:'plain',contextAnswers:answers};
+ assert.ok(storyRequestSchema.safeParse(input).success);assert.ok(!storyRequestSchema.safeParse({...input,contextAnswers:Array.from({length:23},()=>answers[0])}).success);
 });
 test('letter honors recipient, intended message and signature without leaking into other formats',()=>{
  const details={recipient:'엄마',message:'그때 함께해 줘서 고마워요.',sender:'지호',speechStyle:'polite' as const};
@@ -43,7 +43,7 @@ test('letter honors recipient, intended message and signature without leaking in
  assert.ok(JSON.stringify(story).includes(details.message));assert.ok(JSON.stringify(story).includes('지호 드림'));
  assert.deepEqual(makeDemoStory('essay','plain',[],0,details),makeDemoStory('essay','plain',[]));
  assert.equal(makeDemoStory('letter','plain',[]).title,'그날의 나에게');
- const input={photoAnalysis:demoPhotoAnalysis,timeline:demoTimeline,contextAnswers:[],storyType:'letter',writingTone:'plain',letterDetails:details};
+ const input={photoAnalysis:demoPhotoAnalysis,timeline:demoTimeline,contextAnswers:[],storyType:'diary',writingTone:'plain',letterDetails:details};
  assert.ok(storyRequestSchema.safeParse(input).success);assert.ok(!storyRequestSchema.safeParse({...input,letterDetails:{...details,recipient:'x'.repeat(101)}}).success);
 });
 
@@ -102,4 +102,31 @@ test('every fiction genre has a distinct story and input rejects unsupported gen
  assert.ok(!storyRequestSchema.safeParse({...input,fictionGenre:'invalid'}).success);
  assert.ok(needsFormatRevision('이어지는 장면에서는 도로가 비어 있었다.'));
  assert.ok(!needsFormatRevision('드라마를 보다가 내 마음이 어떤지 생각해 보았다.'));
+});
+
+test('automatic chapter count responds to content and mandatory day gaps override all counts',async()=>{
+ const {planChapters,chapterCountOptions}=await import('../lib/story/chapters');
+ function collection(n:number,step:number){const photos=Array.from({length:n},(_,i)=>({...demoPhotoAnalysis[0],id:`p${i}`,order:i+1,capturedAt:new Date(Date.UTC(2026,8,1)+i*step).toISOString()}));return {photoAnalysis:photos,timeline:{...demoTimeline,chapters:[{...demoTimeline.chapters[0],photoIds:photos.map(p=>p.id)}]}};}
+ assert.equal(planChapters(collection(20,60000)).length,5);
+ assert.equal(planChapters(collection(20,3600000)).length,10);
+ const daily=collection(20,86400000);
+ assert.equal(planChapters(daily).length,20);assert.deepEqual(chapterCountOptions(daily),[20]);
+ assert.equal(planChapters(daily,5).length,20);
+ const input={...daily,contextAnswers:[],storyType:'diary',writingTone:'plain'};
+ assert.ok(!storyRequestSchema.safeParse({...input,chapterCount:5}).success);
+ assert.ok(storyRequestSchema.safeParse({...input,chapterCount:20}).success);
+ assert.ok(!storyRequestSchema.safeParse({...input,storyType:'letter'}).success);
+ assert.ok(!storyRequestSchema.safeParse({...input,storyType:'essay'}).success);
+ const mixed=collection(6,60000);mixed.photoAnalysis[3].capturedAt=new Date(Date.UTC(2026,8,3)).toISOString();mixed.photoAnalysis[4].capturedAt='';mixed.photoAnalysis[5].capturedAt=new Date(Date.UTC(2026,8,5)).toISOString();
+ const plan=planChapters(mixed);
+ assert.deepEqual(plan.map(c=>c.photoIds.length),[3,2,1]);
+ assert.deepEqual(plan.flatMap(c=>c.photoIds),mixed.photoAnalysis.map(p=>p.id));
+});
+test('question budgets grow with photo count and dates while keeping the final question',async()=>{
+ const {questionLimit,finalizeQuestions}=await import('../lib/story/questions');
+ assert.equal(questionLimit(3),5);assert.equal(questionLimit(10),8);assert.equal(questionLimit(20),13);
+ const photos=Array.from({length:20},(_,i)=>({...demoPhotoAnalysis[0],id:`p${i}`,order:i+1,capturedAt:new Date(Date.UTC(2026,8,i+1)).toISOString()}));
+ const analysis={photoAnalysis:photos,timeline:demoTimeline};assert.equal(questionLimit(analysis),22);
+ const qs=Array.from({length:30},(_,i)=>({...demoQuestions[0],id:`q${i}`,photoIds:['p0']}));
+ const result=finalizeQuestions(qs,photos.map(p=>p.id),questionLimit(analysis));assert.equal(result.length,22);assert.equal(result.at(-1)!.id,'final_memory');
 });
