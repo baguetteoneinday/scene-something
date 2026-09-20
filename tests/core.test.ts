@@ -134,11 +134,11 @@ test('question budgets grow with photo count and dates while keeping the final q
 test('reconstruction disclosures and factual demo boundaries are separate from fiction',async()=>{
  const {resultDisclosure,creativityLevels}=await import('../lib/story/style');
  for(const level of creativityLevels){
-  assert.equal(Boolean(resultDisclosure(level,false)),level>=50);
+  assert.equal(Boolean(resultDisclosure(level,false)),level>0);
   assert.match(resultDisclosure(level,true)!,/AI가 창작한 단편소설/);
   for(const type of ['record','travel'] as const){const story=makeDemoStory(type,'plain',[],0,undefined,level);assert.ok(!/상상 속 인물|서점|엽서|마음속으로|오늘은/.test(JSON.stringify(story)));}
  }
- assert.match(resultDisclosure(100,false)!,/실제 기억과 다른/);
+ assert.match(resultDisclosure(100,false)!,/실제 경험이나 마음과 다른/);
  const base={photoAnalysis:demoPhotoAnalysis,timeline:demoTimeline,contextAnswers:[],writingTone:'plain'};
  assert.ok(storyRequestSchema.safeParse({...base,storyType:'record'}).success);
  assert.ok(!storyRequestSchema.safeParse({...base,storyType:'diary'}).success);
@@ -170,4 +170,28 @@ test('record review refuses swapped, missing or caption-style chapters instead o
  assert.throws(()=>validateRecordBatch([section],[1]));assert.throws(()=>validateRecordBatch([],[0]));
  assert.throws(()=>validateRecordBatch([{...section,body:'다음 사진에서는 길이 보였다.'}],[0]));
  assert.equal(validateRecordBatch([section],[0]).length,1);
+});
+
+test('memory interview reserves chapter memories, emotional questions and final memory within budget',async()=>{
+ const {memoryQuestions,questionLimit}=await import('../lib/story/questions');
+ const analysis={photoAnalysis:demoPhotoAnalysis,timeline:demoTimeline};
+ const input=Array.from({length:10},(_,i)=>({...demoQuestions[0],id:`info${i}`,kind:'context' as const,question:'어디인가요?'}));
+ for(const extra of [input,[{...input[0],kind:'emotion' as const,photoIds:['invalid']}],[]]){
+  const qs=memoryQuestions(analysis,extra);assert.ok(qs.length<=questionLimit(analysis));assert.ok(questionsSchema.safeParse({questions:qs}).success);
+  assert.match(qs[0].question,/한 문장/);assert.deepEqual(qs[0].photoIds,demoPhotos.map(p=>p.id));
+  assert.ok(qs.some(q=>q.question.includes('마음')));assert.equal(qs.at(-1)!.id,'final_memory');
+ }
+ const labeled=memoryQuestions(analysis,[{...demoQuestions[0],kind:'emotion',question:'demo_01에서는 어떤 마음이었나요?',photoIds:['demo_01']}]);
+ assert.ok(labeled.some(q=>q.question.includes('1번 사진에서는')));assert.ok(!labeled.some(q=>q.question.includes('demo_01')));
+ const daily={...analysis,photoAnalysis:Array.from({length:20},(_,i)=>({...demoPhotoAnalysis[0],id:`day${i}`,order:i+1,capturedAt:new Date(Date.UTC(2026,8,i+1)).toISOString()}))};
+ const qs=memoryQuestions(daily,[]);assert.equal(qs.length,22);assert.ok(qs[20].question.includes('마음'));assert.equal(qs[21].id,'final_memory');
+});
+test('emotional demo additions respect strict mode and explicit user feelings',()=>{
+ const strict=makeDemoStory('record','plain',[],0,undefined,0);
+ const free=makeDemoStory('record','plain',[],0,undefined,100);
+ assert.ok(!JSON.stringify(strict).includes('대단한 이유'));assert.ok(JSON.stringify(free).includes('대단한 이유'));
+ const answer={questionId:'core',question:'마음?',answer:'아무 감정도 없었다.',photoIds:['demo_01']};
+ const supplied=makeDemoStory('record','plain',[answer],0,undefined,100);
+ assert.ok(JSON.stringify(supplied).includes(answer.answer));assert.ok(!JSON.stringify(supplied).includes('대단한 이유'));
+ assert.ok(storyRequestSchema.safeParse({photoAnalysis:demoPhotoAnalysis,timeline:demoTimeline,contextAnswers:[answer],storyType:'record',writingTone:'plain'}).success);
 });

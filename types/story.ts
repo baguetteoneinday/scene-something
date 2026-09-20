@@ -8,7 +8,7 @@ export type GeneratedStory = z.infer<typeof storySchema>;
 export type StoryType = 'record' | 'essay' | 'travel' | 'letter' | 'fiction';
 export type WritingTone = 'plain' | 'emotional' | 'witty' | 'cinematic' | 'literary';
 export type UploadedPhoto = { id: string; src: string; order: number; name: string; capturedAt?: string; optimized?: Blob };
-export type UserContextAnswer = { questionId: string; question: string; answer: string };
+export type UserContextAnswer = { questionId: string; question: string; answer: string; photoIds?: string[] };
 export type ApiResult<T> = { success: true; data: T } | { success: false; error: { code: string; message: string } };
 export const storyTypes: { id: StoryType; label: string; en: string; description: string }[] = [
   {id:'record',label:'기록',en:'Record',description:'사진 속 순간과 기억을 자연스러운 하나의 글로 남겨요.'},

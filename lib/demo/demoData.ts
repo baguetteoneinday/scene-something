@@ -1,4 +1,4 @@
-import { finalizeQuestions } from '@/lib/story/questions';
+import { memoryQuestions } from '@/lib/story/questions';
 import type { FictionGenre } from '@/lib/story/formats';
 import type { Creativity } from '@/lib/story/style';
 import { emptyLetterDetails } from '@/types/story';
@@ -7,12 +7,11 @@ export const demoPhotos:UploadedPhoto[]=[{id:'demo_01',src:'/demo/photo-01.jpg',
 const scenes=['옅은 하늘 아래 바다와 젖은 모래사장이 보인다.','밝은 절벽 아래 자갈 해안을 걷는 한 사람이 보인다.','나무 테이블 위 흰 커피 잔과 받침, 숟가락이 놓여 있다.'];
 export const demoPhotoAnalysis:Analysis['photoAnalysis']=demoPhotos.map((p,i)=>({id:p.id,order:p.order,capturedAt:null,scene:scenes[i],locationType:null,timeOfDay:null,peopleCount:i===1?1:0,activities:i===1?['걷기']:[],objects:i===2?['컵','받침','숟가락','테이블']:['바다',i===0?'모래':'자갈'],foods:i===2?['커피']:[],observations:[scenes[i]],uncertainInferences:[]}));
 export const demoTimeline:Analysis['timeline']={periodSummary:'바다와 해안, 커피가 있는 장면',chapters:demoPhotos.map((p,i)=>({id:`chapter_${i}`,title:p.name,photoIds:[p.id],description:scenes[i],verifiedFacts:[scenes[i]]})),possibleTheme:null};
-export const demoQuestions:MissingContextQuestion[]=finalizeQuestions([
- {id:'place',question:'바다와 해안은 어디에서 남긴 기억인가요?',reason:'정확한 장소 확인',photoIds:['demo_01','demo_02']},
- {id:'people',question:'이 시간을 혼자 보냈나요, 누군가와 함께했나요?',reason:'함께한 사람 확인',photoIds:[]},
- {id:'photo',question:'이 해안에서 어떤 일을 했고, 어떤 생각이 들었나요?',reason:'장면 밖의 경험',photoIds:['demo_02']},
- {id:'connection',question:'커피를 마시던 때 나눈 이야기나 기억나는 일이 있나요?',reason:'사진 밖의 기억',photoIds:['demo_03']},
-],demoPhotos.map(p=>p.id));
+export const demoQuestions:MissingContextQuestion[]=memoryQuestions({photoAnalysis:demoPhotoAnalysis,timeline:demoTimeline},[
+ {id:'feeling',kind:'emotion',question:'해안을 떠올리면 어떤 마음이 먼저 드나요?',reason:'지금 남은 감정',photoIds:['demo_01','demo_02']},
+ {id:'coffee',kind:'emotion',question:'커피가 있던 이 순간에는 마음이 어땠나요?',reason:'당시의 감정',photoIds:['demo_03']},
+ {id:'place',kind:'context',question:'이 시간을 어디에서 보냈나요?',reason:'장소의 맥락',photoIds:[]},
+]);
 export const demoStoryVariants:Record<WritingTone,[string,string,string]>={
  plain:['바다는 옅은 하늘과 맞닿아 있었다. 젖은 모래에는 작은 돌들이 흩어져 있었다.','밝은 절벽 아래로 자갈 해안이 이어졌다. 큰 절벽 곁에서는 사람의 모습이 작았다.','나무 테이블 위에는 커피 한 잔이 놓여 있었다. 흰 잔 옆에 작은 숟가락이 있었다.'],
  emotional:['하늘과 바다 사이의 경계가 옅었다. 젖은 모래에 남은 빛까지 부드럽게 이어졌다.','절벽은 크고 그 아래의 발걸음은 작았다. 넓은 풍경 속에서도 작은 것은 사라지지 않았다.','흰 잔 하나가 나무 테이블 위에 놓여 있었다. 넓은 바다와 달리 두 손 가까이에 놓일 크기였다.'],
@@ -50,8 +49,9 @@ export function makeDemoStory(type:StoryType,tone:WritingTone,answers:UserContex
  if(type==='record'||type==='travel'){
   const memories=answers.filter(a=>a.answer.trim()).sort((a,b)=>Number(b.questionId==='final_memory')-Number(a.questionId==='final_memory'));
   const links=creativity===0?[]:creativity===25?['하늘 아래로는 물결이, 물결 아래로는 모래사장이 이어졌다.','밝은 절벽과 자갈 해안이 나란히 이어져 있었다.','테이블 위의 잔과 받침은 같은 흰색이었다.']:creativity===50?['하늘과 물결, 젖은 모래가 서로 다른 결로 한자리에 이어졌다.','넓은 해안과 작은 발걸음이 크기의 대비를 이루었다.','바다와 절벽의 넓은 윤곽에 이어, 잔의 작은 윤곽이 남았다.']:creativity===75?['옅은 하늘에서 시작된 풍경은 물결을 지나 젖은 모래의 작은 돌들까지 이어졌다.','절벽 아래로 이어진 해안에는 큰 것과 작은 것이 저마다의 자리를 차지하고 있었다.','넓은 바다와 가까운 잔, 서로 다른 크기의 장면들이 이 기록을 이루었다.']:['바다와 모래가 맞닿은 선은 길게 이어졌고, 작은 돌들은 그 곁에 쉼표처럼 놓여 있었다.','절벽과 발걸음 사이에는 커다란 문장과 작은 쉼표 같은 대비가 있었다.','바다의 긴 선과 잔의 둥근 선. 서로 다른 윤곽이 만나 하나의 기록으로 이어졌다.'];
+  const emotionalAddition=memories.length?null:creativity===0?null:creativity===25?'잔잔한 풍경에는 잠깐 마음을 내려놓을 여백이 있었다.':creativity===50?'무언가를 채우기보다 잠깐 그대로 두어도 괜찮을 것 같았다.':'대단한 이유가 있어야 남길 만한 시간이 되는 건 아니라는 생각이 들었다. 마음에 남는 크기는 풍경의 크기와 꼭 같지는 않았다.';
   draft.title=type==='record'?'바다와 커피 사이':'바다와 해안의 여행 기록';
-  draft.sections=demoStoryVariants[tone].map((scene,i)=>({heading:['바다 곁에서','해안을 따라','커피 한 잔'][i],paragraphs:[...memories.filter((_,j)=>j%3===i).map(a=>a.answer.trim()),scene,...(links[i]?[links[i]]:[])],relatedPhotoIds:[demoPhotos[i].id]}));
+  draft.sections=demoStoryVariants[tone].map((scene,i)=>({heading:['바다 곁에서','해안을 따라','커피 한 잔'][i],paragraphs:[...memories.filter((_,j)=>j%3===i).map(a=>a.answer.trim()),scene,...(links[i]?[links[i]]:[]),...(i===2&&emotionalAddition?[emotionalAddition]:[])],relatedPhotoIds:[demoPhotos[i].id]}));
  }
  if(!plan)return draft;
  const used=new Set<number>();
