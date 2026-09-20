@@ -81,3 +81,25 @@ test('invalid chapter counts are rejected; demo diary avoids photo explanations 
  assert.equal(story.sections.length,1);assert.deepEqual(story.sections[0].relatedPhotoIds,demoPhotos.map(p=>p.id));
  assert.ok(!/사진|화면|프레임|보인다/.test(story.sections.flatMap(s=>s.paragraphs).join('')));
 });
+
+test('final memory question is always last, bounded to five, and photo references are safe',async()=>{
+ const {finalizeQuestions}=await import('../lib/story/questions');
+ const empty=finalizeQuestions([],[]);assert.equal(empty.length,1);assert.equal(empty[0].id,'final_memory');
+ const questions=Array.from({length:7},(_,i)=>({id:`q${i}`,question:'이 장면은?',reason:'맥락',photoIds:['demo_01','demo_01','bad']}));
+ const result=finalizeQuestions(questions,demoPhotos.map(p=>p.id));assert.equal(result.length,5);
+ assert.equal(result.at(-1)!.question,'꼭 기록하고 싶은 기억이 있다면 적어주세요.');
+ assert.ok(result.slice(0,-1).every(q=>q.photoIds.join()==='demo_01'));
+ assert.equal(new Set(result.map(q=>q.id)).size,5);
+ assert.equal(finalizeQuestions([{...questions[0],photoIds:['bad']}],['demo_01']).length,1);
+});
+test('every fiction genre has a distinct story and input rejects unsupported genres',async()=>{
+ const {fictionGenres,needsFormatRevision}=await import('../lib/story/formats');
+ const titles=new Set<string>();
+ for(const genre of fictionGenres){const story=storySchema.parse(makeDemoStory('fiction','plain',[],0,undefined,100,undefined,genre.id));titles.add(story.title);assert.ok(!story.sections.some(s=>needsFormatRevision(s.paragraphs.join(''))));}
+ assert.equal(titles.size,fictionGenres.length);
+ const input={photoAnalysis:demoPhotoAnalysis,timeline:demoTimeline,contextAnswers:[],storyType:'fiction',writingTone:'plain'};
+ assert.ok(storyRequestSchema.safeParse({...input,fictionGenre:'mystery'}).success);
+ assert.ok(!storyRequestSchema.safeParse({...input,fictionGenre:'invalid'}).success);
+ assert.ok(needsFormatRevision('이어지는 장면에서는 도로가 비어 있었다.'));
+ assert.ok(!needsFormatRevision('드라마를 보다가 내 마음이 어떤지 생각해 보았다.'));
+});
