@@ -143,3 +143,31 @@ test('reconstruction disclosures and factual demo boundaries are separate from f
  assert.ok(storyRequestSchema.safeParse({...base,storyType:'record'}).success);
  assert.ok(!storyRequestSchema.safeParse({...base,storyType:'diary'}).success);
 });
+
+test('record batches keep shared voice, bounded concurrency and exact order through twenty chapters',async()=>{
+ const {writeRecordChapters,RECORD_VOICE_CONTRACT}=await import('../lib/story/recordWriter');
+ const photos=Array.from({length:20},(_,i)=>({...demoPhotoAnalysis[0],id:`p${i}`,order:i+1}));
+ const data=storyRequestSchema.parse({photoAnalysis:photos,timeline:demoTimeline,storyType:'record',writingTone:'plain',contextAnswers:[]});
+ let active=0,maxActive=0,drafts=0,reviews=0;
+ const generate=async <T extends import('zod').ZodTypeAny>(name:string,schema:T,instructions:string,input:unknown):Promise<import('zod').z.infer<T>>=>{
+  assert.ok(instructions.includes(RECORD_VOICE_CONTRACT));
+  active++;maxActive=Math.max(maxActive,active);await new Promise(resolve=>setTimeout(resolve,1));active--;
+  if(name==='record_writing_plan')return schema.parse({title:'기록',subtitle:null,coverPhotoId:'bad',voiceNotes:'같은 했다체와 호흡',chapters:photos.map(()=>({focus:'기억',memoryIds:[]}))});
+  const payload=JSON.parse((input as {content:string}[])[0].content);const batch=payload['CHAPTER PLAN'] as {chapterIndex:number;photoIds:string[]}[];
+  assert.ok(batch.length<=2);assert.ok(payload['VERIFIED VISUAL FACTS'].every((p:{id:string})=>batch.some(c=>c.photoIds.includes(p.id))));
+  const sections=batch.map(c=>({chapterIndex:c.chapterIndex,heading:`${c.chapterIndex+1}장`,body:'확인된 기억을 자연스러운 호흡으로 적었다. '.repeat(12)}));
+  if(name==='record_chapter_batch'){drafts++;return schema.parse({sections});}
+  reviews++;return schema.parse({checks:batch.map(c=>({chapterIndex:c.chapterIndex,factualCorrections:'없음',voiceAndDevelopment:'유지'})),sections});
+ };
+ const result=await writeRecordChapters(data,photos.map(p=>({photoIds:[p.id]})),'원칙',generate);
+ assert.equal(drafts,10);assert.equal(reviews,10);assert.ok(maxActive<=3&&maxActive>1);
+ assert.equal(result.coverPhotoId,'p0');assert.deepEqual(result.sections.map(s=>s.heading),photos.map((_,i)=>`${i+1}장`));
+ assert.deepEqual(result.sections.flatMap(s=>s.relatedPhotoIds),photos.map(p=>p.id));
+});
+test('record review refuses swapped, missing or caption-style chapters instead of misattaching photos',async()=>{
+ const {validateRecordBatch}=await import('../lib/story/recordWriter');
+ const section={chapterIndex:0,heading:'기록',body:'직접 남긴 기억이다.'};
+ assert.throws(()=>validateRecordBatch([section],[1]));assert.throws(()=>validateRecordBatch([],[0]));
+ assert.throws(()=>validateRecordBatch([{...section,body:'다음 사진에서는 길이 보였다.'}],[0]));
+ assert.equal(validateRecordBatch([section],[0]).length,1);
+});

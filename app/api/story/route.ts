@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { writeRecordChapters,RecordQualityError } from '@/lib/story/recordWriter';
 import { structured } from '@/lib/openai/parse';
 import { storyRequestSchema,storySchema } from '@/lib/openai/schemas';
 import { STORY_SYSTEM_PROMPT,FICTION_SYSTEM_PROMPT } from '@/lib/openai/prompts';
@@ -13,6 +14,7 @@ export async function POST(request:Request){try{
  const chapters=planChapters(data,data.chapterCount);
  const genre=fictionGenres.find(g=>g.id===(data.fictionGenre??'literary'))!;
  const instructions=(data.storyType==='fiction'?FICTION_SYSTEM_PROMPT:STORY_SYSTEM_PROMPT)+'\nFORMAT: '+formatGuides[data.storyType]+'\nTONE: '+toneGuides[data.writingTone]+(data.storyType==='fiction'?'\nGENRE: '+genre.label+' — '+genre.guide:'\nRECONSTRUCTION: '+reconstructionGuides[data.creativity??25]);
+ if(data.storyType==='record'&&chapters.length>1)return success(await writeRecordChapters(data,chapters,instructions,structured));
  const input={storyType:data.storyType,writingTone:data.writingTone,
   RECONSTRUCTION:data.storyType==='fiction'?100:(data.creativity??25),
   'FORMAT GUIDE':formatGuides[data.storyType],
@@ -23,7 +25,7 @@ export async function POST(request:Request){try{
   ...(data.storyType==='fiction'?{}:{'VERIFIED USER CONTEXT':data.contextAnswers.filter(a=>a.answer.trim())}),
   ...(data.storyType==='fiction'?{}:{'PRIORITY MEMORY TO PRESERVE':data.contextAnswers.find(a=>a.questionId==='final_memory')?.answer.trim()||null}),
  };
- const section=storySchema.shape.sections.element.omit({paragraphs:true}).extend({body:z.string().min(data.storyType==='fiction'?Math.max(360,Math.ceil(900/chapters.length)):(chapters.length>=10?120:160)).max(data.storyType==='fiction'?6000:2400)});
+ const section=storySchema.shape.sections.element.omit({paragraphs:true}).extend({body:z.string().min(data.storyType==='fiction'?Math.max(360,Math.ceil(900/chapters.length)):160).max(data.storyType==='fiction'?6000:2400)});
  const schema=storySchema.extend({sections:z.array(section).length(chapters.length)});
  const outputSchema=data.storyType==='fiction'?z.object({plot:z.object({protagonist:z.string(),goal:z.string(),conflict:z.string(),turningPoint:z.string(),resolution:z.string()}).strict(),...schema.shape,ending:z.string().min(200).max(2000)}).strict():schema;
  let result=await structured('generated_story',outputSchema,instructions,[{role:'user',content:JSON.stringify(input)}],'medium');
@@ -37,4 +39,4 @@ export async function POST(request:Request){try{
  const sections=result.sections.map((section,i)=>({heading:section.heading,paragraphs:section.body.split(/\n\s*\n/).filter(p=>p.trim()).reduce<string[]>((all,p,i)=>{if(i<8)all.push(p);else all[7]+='\n\n'+p;return all;},[]),relatedPhotoIds:chapters[i].photoIds}));
  if('ending' in result&&typeof result.ending==='string'){const last=sections.at(-1)!;if(last.paragraphs.length<8)last.paragraphs.push(result.ending);else last.paragraphs[7]+='\n\n'+result.ending;}
  return success(storySchema.parse({title:result.title,subtitle:result.subtitle,coverPhotoId:result.coverPhotoId,sections}));
-}catch(error){return apiError(error);}}
+}catch(error){return apiError(error instanceof RecordQualityError?new AppError('STYLE_RETRY',error.message,502):error);}}
